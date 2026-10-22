@@ -11,16 +11,19 @@ from functools import wraps
 from pathlib import Path
 
 from flask import Flask, Response, abort, redirect, render_template, request, send_file, session, url_for
-from analysis import SUMMARY_FIELDS, csv_text, summarize
+from analysis import SUMMARY_FIELDS, csv_text, summarize, summarize_ratings
 from database import Database
 from scheduling import TOTAL_TRIALS, DESIGN_VERSION, build_schedule, validate_pairs
 
 VOTES = {"left", "right", "tie", "cannot_judge"}
+RATING_VOTES = {"rating_1", "rating_2", "rating_3", "rating_4", "rating_5", "rating_cannot_judge"}
 RESPONSE_FIELDS = ["study_id", "participant_id", "participant_complete", "pair_id", "source_id", "animal",
                    "baseline", "trial_index", "left_method", "right_method", "left_asset", "right_asset",
                    "realism_choice", "realism_winner", "preference_choice", "preference_winner",
                    "reference_asset", "questions_version", "design_version", "shown_at", "submitted_at", "elapsed_seconds", "comment"]
 
+
+RESPONSE_FIELDS += ["second_question_type", "selected_image_rating", "rated_image", "rated_method"]
 
 def utcnow():
     return datetime.now(timezone.utc).isoformat()
@@ -192,8 +195,11 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
         if index != current or index >= len(schedule):
             abort(400, "Trial is out of order; reload the current trial.")
         realism, preference = request.form.get("realism"), request.form.get("preference")
-        if realism not in VOTES or preference not in VOTES:
+        if realism not in VOTES or preference not in (VOTES | RATING_VOTES):
             abort(400, "Answer both questions using the supplied options.")
+        # Accept legacy answers from pages opened before deployment, too.
+        if realism == "cannot_judge" and preference in RATING_VOTES and preference != "rating_cannot_judge":
+            abort(400, "You selected Cannot judge in Question 1. Go back and select Cannot judge in Question 2 as well.")
         comment = request.form.get("comment", "").strip()
         if len(comment) > 1000:
             abort(400, "Comment is too long.")
@@ -246,9 +252,22 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
                        baseline=pair["baseline"], left_method=item["left_method"], right_method=item["right_method"],
                        left_asset=pair["assets"][item["left_method"]], right_asset=pair["assets"][item["right_method"]],
                        reference_asset=pair["assets"]["original"], questions_version=manifest["questions_version"], design_version=DESIGN_VERSION)
-            for question in ("realism", "preference"):
-                choice = row[question + "_choice"]
-                row[question + "_winner"] = item[choice+"_method"] if choice in {"left", "right"} else choice
+            choice = row["realism_choice"]
+            row["realism_winner"] = item[choice + "_method"] if choice in {"left", "right"} else choice
+            second = row["preference_choice"]
+            if second in RATING_VOTES:
+                row["second_question_type"] = "selected_image_realism_rating_v1"
+                row["questions_version"] = "reference-selected-realism-rating-v1"
+                row["selected_image_rating"] = int(second.rsplit("_", 1)[1]) if second != "rating_cannot_judge" else ""
+                row["rated_image"] = {"left": "A", "right": "B", "tie": "both_equal", "cannot_judge": "cannot_judge"}[choice]
+                row["rated_method"] = item[choice + "_method"] if choice in {"left", "right"} else "both_equal" if choice == "tie" else "cannot_judge"
+                row["preference_winner"] = ""
+            else:
+                row["second_question_type"] = "overall_preference"
+                row["selected_image_rating"] = ""
+                row["rated_image"] = ""
+                row["rated_method"] = ""
+                row["preference_winner"] = item[second + "_method"] if second in {"left", "right"} else second
             rows.append(row)
         return rows, participants
 
@@ -259,7 +278,7 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
         complete_only = request.args.get("complete") == "1"
         selected = [r for r in rows if r["participant_complete"]] if complete_only else rows
         completed = len({r["participant_id"] for r in rows if r["participant_complete"]})
-        return render_template("admin.html", summaries=summarize(selected), complete_only=complete_only,
+        return render_template("admin.html", summaries=summarize(selected), rating_summaries=summarize_ratings(selected), complete_only=complete_only,
                                started=len(participants), completed=completed, judgments=len(selected))
 
     @app.get("/admin/export/<kind>")
@@ -271,7 +290,7 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
         if kind == "responses":
             fields, data = RESPONSE_FIELDS, rows
         elif kind == "summary":
-            fields, data = SUMMARY_FIELDS, summarize(rows)
+            fields, data = SUMMARY_FIELDS, summarize(rows) + summarize_ratings(rows)
         elif kind == "participants":
             fields = ["participant_id", "created_at", "assigned_trials", "answered_trials", "complete"]
             data = []

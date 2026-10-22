@@ -1,15 +1,40 @@
-{% extends 'base.html' %}{% block title %}Study results{% endblock %}{% block content %}
-<p class="eyebrow">Researcher dashboard</p><h1>Perceived realism and overall preference</h1>
+{% extends 'base.html' %}
+{% macro label(method) -%}
+{{ {'remove':'Inpainting removal', 'blurring':'Blur', 'black_mask':'Black mask', 'both_equal':'Both equally real — shared rating', 'cannot_judge':'No image chosen — cannot judge'}.get(method, method) }}
+{%- endmacro %}
+{% macro choices_table(rows) %}
+<div class="table-scroll"><table><thead><tr><th>Animal</th><th>Baseline</th><th>Responses</th><th>Participants</th><th>Image pairs</th><th>Inpainting chosen</th><th>Baseline chosen</th><th>Equal</th><th>Cannot judge</th><th>Inpainting share, decisive</th><th>Favored, decisive</th></tr></thead><tbody>
+{% for row in rows %}<tr><td>{{ row.animal }}</td><td>{{ label(row.baseline) }}</td><td>{{ row.judgments }}</td><td>{{ row.participants }}</td><td>{{ row.image_pairs }}</td><td>{{ row.remove_wins }}</td><td>{{ row.baseline_wins }}</td><td>{{ row.ties }}</td><td>{{ row.cannot_judge }}</td><td>{{ '%.1f%%'|format(100*row.remove_share_decisive) if row.remove_share_decisive is not none else 'N/A' }}</td><td>{{ label(row.favored_decisive) }}</td></tr>
+{% else %}<tr><td colspan="12">No responses for this filter yet.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endmacro %}
+{% block title %}Study results{% endblock %}
+{% block content %}
+<p class="eyebrow">Researcher dashboard</p><h1>Image realism study results</h1>
 <div class="stats"><div><strong>{{ started }}</strong> started sessions</div><div><strong>{{ completed }}</strong> completed sessions</div><div><strong>{{ judgments }}</strong> included pair responses</div></div>
-<p>Perceived realism is the primary outcome. Overall preference is recorded as a separate secondary outcome. Each pair response contains one judgment for each outcome.</p>
 <div class="toolbar"><a href="{{ url_for('admin') }}">All submitted responses</a><a href="{{ url_for('admin', complete=1) }}">Completed sessions only</a></div>
 <p class="quiet">Current filter: {{ 'Completed sessions only' if complete_only else 'All submitted responses, including unfinished sessions' }}.</p>
 <div class="toolbar"><a href="{{ url_for('export', kind='responses', complete=1 if complete_only else 0) }}">Download responses.csv</a><a href="{{ url_for('export', kind='summary', complete=1 if complete_only else 0) }}">Download summary.csv</a><a href="{{ url_for('export', kind='participants') }}">Download participants.csv</a></div>
-<div class="table-scroll"><table><thead><tr><th>Animal</th><th>Comparison</th><th>Question</th><th>Responses</th><th>Removal wins</th><th>Baseline wins</th><th>Equal</th><th>Cannot judge</th><th>Removal share, decisive</th></tr></thead><tbody>
-{% for row in summaries %}<tr><td>{{ row.animal }}</td><td>remove vs {{ row.baseline }}</td><td>{{ row.question }}</td><td>{{ row.judgments }}</td><td>{{ row.remove_wins }}</td><td>{{ row.baseline_wins }}</td><td>{{ row.ties }}</td><td>{{ row.cannot_judge }}</td><td>{{ '%.1f%%'|format(100*row.remove_share_decisive) if row.remove_share_decisive is not none else 'N/A' }}</td></tr>
-{% else %}<tr><td colspan="9">No responses for this filter yet.</td></tr>{% endfor %}
+
+<h2>Question 1: Which edited image looks more like a real photograph?</h2>
+<p>Counts show how often participants chose inpainting removal or the traditional baseline. “Decisive” means Image A or Image B was chosen; equal and cannot-judge answers are excluded from that percentage.</p>
+{{ choices_table(summaries|selectattr('question', 'equalto', 'realism')|list) }}
+<p class="quiet">This table includes Question 1 answers from both questionnaire versions. The wording of Question 1 is unchanged. Use questions_version in responses.csv to analyze versions separately.</p>
+
+<h2>Question 2: How realistic does the selected edited image look?</h2>
+<p>Ratings run from 1 (not at all realistic) to 5 (extremely realistic). Each row summarizes ratings of the selected method, within one baseline comparison. Shared ratings for equally real images and cannot-judge answers have their own rows.</p>
+<div class="table-scroll"><table><thead><tr><th>Animal</th><th>Baseline</th><th>Rated image / method</th><th>Responses</th><th>Participants</th><th>Image pairs</th><th>Valid ratings</th><th>Cannot judge</th><th>Mean</th><th>Median</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Rated 4 or 5</th></tr></thead><tbody>
+{% for row in rating_summaries %}<tr><td>{{ row.animal }}</td><td>{{ label(row.baseline) }}</td><td>{{ label(row.rated_method) }}</td><td>{{ row.rating_responses }}</td><td>{{ row.participants }}</td><td>{{ row.image_pairs }}</td><td>{{ row.valid_ratings }}</td><td>{{ row.rating_cannot_judge }}</td><td>{{ '%.2f'|format(row.mean_rating) if row.mean_rating is not none else 'N/A' }}</td><td>{{ '%.1f'|format(row.median_rating) if row.median_rating is not none else 'N/A' }}</td><td>{{ row.rating_1 }}</td><td>{{ row.rating_2 }}</td><td>{{ row.rating_3 }}</td><td>{{ row.rating_4 }}</td><td>{{ row.rating_5 }}</td><td>{{ '%.1f%%'|format(100*row.rating_4_or_5_share) if row.rating_4_or_5_share is not none else 'N/A' }}</td></tr>
+{% else %}<tr><td colspan="16">No new Question 2 ratings for this filter yet. Older preference answers are shown separately below.</td></tr>{% endfor %}
 </tbody></table></div>
-<p>Removal share among decisive responses = removal wins ÷ (removal wins + baseline wins). Ties and cannot-judge responses are reported separately. The summary CSV also includes shares using all responses.</p>
-<p class="quiet">These are descriptive counts, not significance tests. Responses repeat across participants and source images. Method names are hidden during judging, but edits can remain visually recognizable.</p>
+<p><strong>Interpretation:</strong> These are ratings of images participants selected in Question 1, not ratings of every image. A higher mean does not by itself establish that a method is better overall. Shared ratings are not assigned to either method. Cannot-judge answers are excluded from means, medians, and percentages of ratings 4 or 5.</p>
+
+{% set legacy = summaries|selectattr('question', 'equalto', 'preference')|list %}
+{% if legacy %}
+<h2>Earlier Question 2: Overall preference</h2>
+<p>These answers were collected before Question 2 changed to a realism rating. They are retained separately and are not included in the new rating statistics.</p>
+{{ choices_table(legacy) }}
+{% endif %}
+<p class="quiet">ALL_ANIMALS rows pool species within each baseline; species rows show the same responses separately. Do not add pooled rows to species rows. Participants and images repeat across responses. These are descriptive summaries, not statistical significance tests. The summary CSV includes separate rows for both questions and older preference answers, if present. Blank fields mean a statistic does not apply.</p>
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf() }}"><button class="secondary">Sign out</button></form>
 {% endblock %}

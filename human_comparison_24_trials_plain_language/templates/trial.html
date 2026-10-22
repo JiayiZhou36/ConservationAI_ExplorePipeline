@@ -15,12 +15,18 @@
 <noscript><p>Please enable JavaScript so the page can check that all three images have loaded before you answer.</p></noscript>
 <form method="post" action="{{ url_for('answer') }}" class="answer-form">
 <input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="trial_index" value="{{ index }}">
-{% for name, question, help in [('realism','1. Which edited image looks more like a real photograph?','Look at the area where the animal was and how it fits the surrounding scene. Judge how real the picture looks, not just how well the animal is hidden.'),('preference','2. Which edited image do you prefer overall?','Choose the version you prefer to look at. This is separate from how real it looks, so your answer can differ from Question 1.') ] %}
-<fieldset><legend>{{ question }}</legend><p class="quiet">{{ help }}</p><div class="choices">
-{% for value, label in [('left','Image A'),('right','Image B'),('tie','Both look equally real' if name == 'realism' else 'No preference'),('cannot_judge','Cannot judge')] %}
-<label><input type="radio" name="{{ name }}" value="{{ value }}" required><span>{{ label }}</span></label>
+<fieldset><legend>1. Which edited image looks more like a real photograph?</legend>
+<p class="quiet">Look at the area where the animal was and how it fits the surrounding scene. Judge how real the picture looks, not just how well the animal is hidden.</p>
+<div class="choices">
+{% for value, label in [('left','Image A'),('right','Image B'),('tie','Both look equally real'),('cannot_judge','Cannot judge')] %}
+<label><input type="radio" name="realism" value="{{ value }}" required><span>{{ label }}</span></label>
 {% endfor %}</div></fieldset>
-{% endfor %}
+<fieldset><legend>2. How realistic does the edited image you selected in Question 1 look?</legend>
+<p class="quiet">Imagine seeing it without the original photograph. How much does it look like a real, unedited photograph? If you chose “Both look equally real,” give one shared rating for both images. If you chose “Cannot judge,” choose “Cannot judge” below.</p>
+<div class="choices">
+{% for value, label in [('rating_1','1 — Not at all realistic'),('rating_2','2 — Slightly realistic'),('rating_3','3 — Moderately realistic'),('rating_4','4 — Very realistic'),('rating_5','5 — Extremely realistic'),('rating_cannot_judge','Cannot judge')] %}
+<label><input type="radio" name="preference" value="{{ value }}" required><span>{{ label }}</span></label>
+{% endfor %}</div></fieldset>
 <label for="comment">What made either image look real or unreal to you? <span class="quiet">Optional · no personal information</span></label>
 <textarea id="comment" name="comment" rows="2" maxlength="1000" placeholder="You can describe anything you noticed in Image A or Image B."></textarea>
 <div class="submit-row"><span class="quiet">Your answers are saved when you continue. Submitted answers cannot be changed.</span><button id="answer-submit" disabled>Save answers and continue →</button></div>

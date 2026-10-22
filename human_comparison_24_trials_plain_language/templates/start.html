@@ -15,13 +15,13 @@
 <li><strong>Look at the original photograph.</strong> Use it to see where the animal or animals were before editing.</li>
 <li><strong>Look at Image A and Image B.</strong> Pay attention to the edited area and how it fits the rest of the scene. You can select an image to open a larger view.</li>
 <li><strong>Choose which edited image looks more real.</strong> Consider whether the area looks natural or whether you notice unusual edges, colors, shapes, or blurry patches. Judge how real the picture looks, not just how well the animal is hidden.</li>
-<li><strong>Then tell us which edited image you prefer overall.</strong> This is a separate question, and your answer can be different.</li>
+<li><strong>Rate how realistic your chosen image looks.</strong> Use a scale from 1 (not at all realistic) to 5 (extremely realistic). If both images look equally real, give one shared rating for both. If you selected “Cannot judge” in the first question, select it again for the rating.</li>
 <li><strong>Save your answers and continue.</strong> If the images look equally real, choose that option. If you cannot decide how real they look, choose “Cannot judge.” The original photograph is only a guide and cannot be chosen.</li>
 </ol></div>
 <p>Image A and Image B can change positions on each page. Please look at both every time. Take the time you need; comments are optional.</p>
 <p><strong>There are {{ estimated_trials }} comparisons: eight for each of three animal species.</strong> Each comparison has two questions.</p>
 <h2>Taking part is your choice</h2>
-<p>You can stop by closing the page. Answers you have already submitted will remain saved. We record your choices, optional comments, timing, and a random code for your session. We do not ask for your name or email. Please do not put personal information in comments.</p>
+<p>You can stop by closing the page. Answers you have already submitted will remain saved. We record your choices, realism ratings, optional comments, timing, and a random code for your session. We do not ask for your name or email. Please do not put personal information in comments.</p>
 <p class="quiet">Your browser remembers your session for up to 30 days using a cookie. Use the same browser to return to an unfinished session. Please take part once. The hosting service may separately keep website access logs.</p>
 <form method="post" action="{{ url_for('start') }}"><input type="hidden" name="csrf" value="{{ csrf() }}">
 <label class="agreement"><input type="checkbox" name="agree" value="yes" required> I have read the information above and want to take part.</label>
