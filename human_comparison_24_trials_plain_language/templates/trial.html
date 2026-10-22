@@ -21,12 +21,14 @@
 {% for value, label in [('left','Image A'),('right','Image B'),('tie','Both look equally real'),('cannot_judge','Cannot judge')] %}
 <label><input type="radio" name="realism" value="{{ value }}" required><span>{{ label }}</span></label>
 {% endfor %}</div></fieldset>
-<fieldset><legend>2. How realistic does the edited image you selected in Question 1 look?</legend>
-<p class="quiet">Imagine seeing it without the original photograph. How much does it look like a real, unedited photograph? If you chose “Both look equally real,” give one shared rating for both images. If you chose “Cannot judge,” choose “Cannot judge” below.</p>
+<fieldset><legend>2. How much does the image you chose look like a real, unedited photograph?</legend>
+<p class="quiet">Focus on the area where the animal was. Does that area look natural and fit the rest of the photograph? Judge how natural the photograph looks, rather than how well the animal is hidden.</p>
 <div class="choices">
-{% for value, label in [('rating_1','1 — Not at all realistic'),('rating_2','2 — Slightly realistic'),('rating_3','3 — Moderately realistic'),('rating_4','4 — Very realistic'),('rating_5','5 — Extremely realistic'),('rating_cannot_judge','Cannot judge')] %}
+{% for value, label in [('rating_1','1 — Clearly edited: The changed area looks obviously unnatural.'),('rating_2','2 — Mostly looks edited: Several things in the changed area look unnatural.'),('rating_3','3 — Somewhat natural: Some parts look natural, but others look edited.'),('rating_4','4 — Mostly looks real: The changed area looks natural, with only small signs of editing.'),('rating_5','5 — Looks completely real: I cannot notice any signs of editing.'),('rating_cannot_judge','Cannot judge')] %}
 <label><input type="radio" name="preference" value="{{ value }}" required><span>{{ label }}</span></label>
-{% endfor %}</div></fieldset>
+{% endfor %}</div>
+<p class="quiet">If you chose “Both look equally real” in Question 1, give one rating that describes both images. If you chose “Cannot judge,” select “Cannot judge” here too.</p>
+</fieldset>
 <label for="comment">What made either image look real or unreal to you? <span class="quiet">Optional · no personal information</span></label>
 <textarea id="comment" name="comment" rows="2" maxlength="1000" placeholder="You can describe anything you noticed in Image A or Image B."></textarea>
 <div class="submit-row"><span class="quiet">Your answers are saved when you continue. Submitted answers cannot be changed.</span><button id="answer-submit" disabled>Save answers and continue →</button></div>

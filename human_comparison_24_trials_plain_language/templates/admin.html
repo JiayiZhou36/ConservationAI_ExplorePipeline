@@ -21,9 +21,9 @@
 {{ choices_table(summaries|selectattr('question', 'equalto', 'realism')|list) }}
 <p class="quiet">This table includes Question 1 answers from both questionnaire versions. The wording of Question 1 is unchanged. Use questions_version in responses.csv to analyze versions separately.</p>
 
-<h2>Question 2: How realistic does the selected edited image look?</h2>
-<p>Ratings run from 1 (not at all realistic) to 5 (extremely realistic). Each row summarizes ratings of the selected method, within one baseline comparison. Shared ratings for equally real images and cannot-judge answers have their own rows.</p>
-<div class="table-scroll"><table><thead><tr><th>Animal</th><th>Baseline</th><th>Rated image / method</th><th>Responses</th><th>Participants</th><th>Image pairs</th><th>Valid ratings</th><th>Cannot judge</th><th>Mean</th><th>Median</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Rated 4 or 5</th></tr></thead><tbody>
+<h2>Question 2: How much does the chosen image look like a real, unedited photograph?</h2>
+<p>Ratings run from 1 (clearly edited) to 5 (looks completely real). Each row summarizes ratings of the selected method, within one baseline comparison. Shared ratings for equally real images and cannot-judge answers have their own rows.</p>
+<div class="table-scroll"><table><thead><tr><th>Animal</th><th>Baseline</th><th>Rated image / method</th><th>Responses</th><th>Participants</th><th>Image pairs</th><th>Valid ratings</th><th>Cannot judge</th><th>Mean</th><th>Median</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Mostly or completely real (4–5)</th></tr></thead><tbody>
 {% for row in rating_summaries %}<tr><td>{{ row.animal }}</td><td>{{ label(row.baseline) }}</td><td>{{ label(row.rated_method) }}</td><td>{{ row.rating_responses }}</td><td>{{ row.participants }}</td><td>{{ row.image_pairs }}</td><td>{{ row.valid_ratings }}</td><td>{{ row.rating_cannot_judge }}</td><td>{{ '%.2f'|format(row.mean_rating) if row.mean_rating is not none else 'N/A' }}</td><td>{{ '%.1f'|format(row.median_rating) if row.median_rating is not none else 'N/A' }}</td><td>{{ row.rating_1 }}</td><td>{{ row.rating_2 }}</td><td>{{ row.rating_3 }}</td><td>{{ row.rating_4 }}</td><td>{{ row.rating_5 }}</td><td>{{ '%.1f%%'|format(100*row.rating_4_or_5_share) if row.rating_4_or_5_share is not none else 'N/A' }}</td></tr>
 {% else %}<tr><td colspan="16">No new Question 2 ratings for this filter yet. Older preference answers are shown separately below.</td></tr>{% endfor %}
 </tbody></table></div>
