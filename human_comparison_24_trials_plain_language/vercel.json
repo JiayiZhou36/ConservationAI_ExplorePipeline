@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "flask",
+  "functions": {
+    "index.py": {
+      "includeFiles": "{study_web1200/manifest.json,study_web1200/images/**,templates/**}",
+      "maxDuration": 60
+    }
+  }
+}

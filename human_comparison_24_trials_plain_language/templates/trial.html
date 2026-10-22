@@ -1,0 +1,27 @@
+{% extends 'base.html' %}{% block content %}
+<div class="trial-heading"><div><p class="eyebrow">Comparison {{ index + 1 }} of {{ total }}</p><h1>Which edited photograph looks more real?</h1></div><p class="quiet">Select an image for a larger view.</p></div>
+<progress value="{{ index }}" max="{{ total }}" aria-label="Completed comparisons"></progress>
+<div class="trial-purpose"><strong>What was changed?</strong> Both versions below try to remove or hide the same animal or animals shown in the original. Compare how real the edited photographs look, especially the area where the animal was.</div>
+<section class="reference-section" aria-label="Original photograph before editing">
+<figure class="reference-panel"><figcaption>ORIGINAL PHOTOGRAPH · BEFORE EDITING</figcaption>
+<a href="{{ url_for('image', index=index, side='reference') }}" target="_blank" rel="noopener"><img class="study-image" src="{{ url_for('image', index=index, side='reference') }}" alt="Original photograph showing the animal or animals before editing"></a></figure>
+<p class="quiet">Use this photograph to find the animal before editing. Choose between edited Image A and Image B below.</p>
+</section>
+<div class="image-grid">
+{% for side, label in [('left','A'),('right','B')] %}
+<figure><figcaption>EDITED IMAGE {{ label }}</figcaption><a href="{{ url_for('image', index=index, side=side) }}" target="_blank" rel="noopener"><img class="study-image" src="{{ url_for('image', index=index, side=side) }}" alt="Edited Image {{ label }}, made to remove or hide the same animal or animals"></a></figure>
+{% endfor %}</div>
+<p id="image-status" class="quiet" role="status">Loading the original photograph and both edited images…</p>
+<noscript><p>Please enable JavaScript so the page can check that all three images have loaded before you answer.</p></noscript>
+<form method="post" action="{{ url_for('answer') }}" class="answer-form">
+<input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="trial_index" value="{{ index }}">
+{% for name, question, help in [('realism','1. Which edited image looks more like a real photograph?','Look at the area where the animal was and how it fits the surrounding scene. Judge how real the picture looks, not just how well the animal is hidden.'),('preference','2. Which edited image do you prefer overall?','Choose the version you prefer to look at. This is separate from how real it looks, so your answer can differ from Question 1.') ] %}
+<fieldset><legend>{{ question }}</legend><p class="quiet">{{ help }}</p><div class="choices">
+{% for value, label in [('left','Image A'),('right','Image B'),('tie','Both look equally real' if name == 'realism' else 'No preference'),('cannot_judge','Cannot judge')] %}
+<label><input type="radio" name="{{ name }}" value="{{ value }}" required><span>{{ label }}</span></label>
+{% endfor %}</div></fieldset>
+{% endfor %}
+<label for="comment">What made either image look real or unreal to you? <span class="quiet">Optional · no personal information</span></label>
+<textarea id="comment" name="comment" rows="2" maxlength="1000" placeholder="You can describe anything you noticed in Image A or Image B."></textarea>
+<div class="submit-row"><span class="quiet">Your answers are saved when you continue. Submitted answers cannot be changed.</span><button id="answer-submit" disabled>Save answers and continue →</button></div>
+</form>{% endblock %}

@@ -1,0 +1,305 @@
+"""Human evaluation: blinded removal vs black-mask / blur comparisons."""
+import argparse
+import hmac
+import json
+import os
+import random
+import secrets
+import time
+from datetime import datetime, timezone, timedelta
+from functools import wraps
+from pathlib import Path
+
+from flask import Flask, Response, abort, redirect, render_template, request, send_file, session, url_for
+from analysis import SUMMARY_FIELDS, csv_text, summarize
+from database import Database
+from scheduling import TOTAL_TRIALS, DESIGN_VERSION, build_schedule, validate_pairs
+
+VOTES = {"left", "right", "tie", "cannot_judge"}
+RESPONSE_FIELDS = ["study_id", "participant_id", "participant_complete", "pair_id", "source_id", "animal",
+                   "baseline", "trial_index", "left_method", "right_method", "left_asset", "right_asset",
+                   "realism_choice", "realism_winner", "preference_choice", "preference_winner",
+                   "reference_asset", "questions_version", "design_version", "shown_at", "submitted_at", "elapsed_seconds", "comment"]
+
+
+def utcnow():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, secure_cookie=False):
+    root = Path(study_dir).resolve()
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    if not manifest["pairs"]:
+        raise ValueError("Study has no image pairs")
+    password = admin_password or os.environ.get("STUDY_ADMIN_PASSWORD", "")
+    if len(password) < 16:
+        raise ValueError("Set STUDY_ADMIN_PASSWORD to a private password of at least 16 characters")
+    if max_trials != TOTAL_TRIALS:
+        raise ValueError("This version requires exactly 24 trials. Set MAX_TRIALS=24 or remove the old setting.")
+    is_vercel = os.environ.get("VERCEL") == "1"
+    database_url = os.environ.get("DATABASE_URL")
+    secret_key = os.environ.get("SECRET_KEY")
+    if is_vercel and (not database_url or not secret_key):
+        raise ValueError("Vercel requires DATABASE_URL and SECRET_KEY environment variables")
+    if not secret_key:
+        secret_key = (root / "session.key").read_text().strip()
+    if len(secret_key) < 32:
+        raise ValueError("SECRET_KEY must contain at least 32 characters")
+    app = Flask(__name__, static_folder=None)
+    app.config.update(SECRET_KEY=secret_key,
+                      SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
+                      SESSION_COOKIE_SECURE=secure_cookie, PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+                      MAX_CONTENT_LENGTH=16_384, STUDY_DIR=str(root))
+    database = Database(root / "responses.sqlite3", database_url)
+    db = database.connect
+    validate_pairs(manifest["pairs"])
+    pairs = {pair["pair_id"]: pair for pair in manifest["pairs"]}
+    if manifest.get("design_version") != DESIGN_VERSION:
+        raise ValueError("Prepare a NEW study with this 24-trial version of prepare_study.py")
+    if manifest.get("questions_version") != "reference-realism-and-overall-v4":
+        raise ValueError("Prepare a NEW reference-enabled study with the updated prepare_study.py")
+
+    with db() as connection:
+        if not database.postgres:
+            connection.execute("PRAGMA journal_mode=WAL")
+        connection.executescript('''
+            CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS participants (
+                id TEXT PRIMARY KEY, schedule TEXT NOT NULL, created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS exposures (
+                participant_id TEXT NOT NULL REFERENCES participants(id), trial_index INTEGER NOT NULL,
+                shown_at TEXT NOT NULL, shown_epoch DOUBLE PRECISION NOT NULL,
+                PRIMARY KEY (participant_id, trial_index));
+            CREATE TABLE IF NOT EXISTS responses (
+                participant_id TEXT NOT NULL REFERENCES participants(id), trial_index INTEGER NOT NULL,
+                realism_choice TEXT NOT NULL, preference_choice TEXT NOT NULL,
+                submitted_at TEXT NOT NULL, elapsed_seconds DOUBLE PRECISION NOT NULL, comment TEXT NOT NULL,
+                PRIMARY KEY (participant_id, trial_index));
+        ''')
+        connection.execute("INSERT INTO metadata VALUES ('study_id', ?) ON CONFLICT DO NOTHING", (manifest["study_id"],))
+        old = connection.execute("SELECT value FROM metadata WHERE key='study_id'").fetchone()
+        if old and old["value"] != manifest["study_id"]:
+            raise ValueError("Manifest differs from this database. Create a new study folder.")
+        design = connection.execute("SELECT value FROM metadata WHERE key='design_version'").fetchone()
+        if design is None:
+            prior = connection.execute("SELECT COUNT(*) AS n FROM participants").fetchone()
+            if prior["n"]:
+                raise ValueError("This database has sessions from an earlier design. Use a fresh study folder/database for the 24-trial study.")
+            connection.execute("INSERT INTO metadata VALUES ('design_version', ?) ON CONFLICT DO NOTHING", (DESIGN_VERSION,))
+            design = connection.execute("SELECT value FROM metadata WHERE key='design_version'").fetchone()
+        if design["value"] != DESIGN_VERSION:
+            raise ValueError("Database study design differs. Use a fresh study folder/database.")
+
+    def csrf():
+        if "csrf" not in session:
+            session["csrf"] = secrets.token_hex(24)
+        return session["csrf"]
+
+    app.jinja_env.globals["csrf"] = csrf
+
+    @app.before_request
+    def protect_posts():
+        if request.method == "POST":
+            supplied = request.form.get("csrf", "")
+            expected = session.get("csrf", "")
+            if not supplied or not expected or not hmac.compare_digest(supplied, expected):
+                abort(400, "Invalid form session; reload the page and try again.")
+
+    @app.after_request
+    def headers(response):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'"
+        return response
+
+    def progress():
+        pid = session.get("participant_id")
+        if not pid:
+            return None, [], 0
+        with db() as connection:
+            participant = connection.execute("SELECT * FROM participants WHERE id=?", (pid,)).fetchone()
+            if not participant:
+                return None, [], 0
+            completed = {row["trial_index"] for row in connection.execute("SELECT trial_index FROM responses WHERE participant_id=?", (pid,))}
+        schedule = json.loads(participant["schedule"])
+        current = next((i for i in range(len(schedule)) if i not in completed), len(schedule))
+        return pid, schedule, current
+
+    @app.get("/assets/<name>")
+    def assets(name):
+        if name not in {"style.css", "study.js"}:
+            abort(404)
+        return send_file(Path(__file__).resolve().parent / "public" / "assets" / name)
+
+    @app.get("/")
+    def home():
+        if progress()[0]:
+            return redirect(url_for("trial"))
+        return render_template("start.html", estimated_trials=TOTAL_TRIALS)
+
+    @app.post("/start")
+    def start():
+        if progress()[0]:
+            return redirect(url_for("trial"))
+        if request.form.get("agree") != "yes":
+            abort(400, "Please confirm that you want to participate.")
+        rng = random.Random(secrets.randbits(128))
+        schedule = build_schedule(list(pairs.values()), rng)
+        pid = secrets.token_hex(16)
+        with db() as connection:
+            connection.execute("INSERT INTO participants VALUES (?, ?, ?)", (pid, json.dumps(schedule), utcnow()))
+        session["participant_id"] = pid
+        session.permanent = True
+        return redirect(url_for("trial"))
+
+    @app.get("/trial")
+    def trial():
+        pid, schedule, index = progress()
+        if not pid:
+            return redirect(url_for("home"))
+        if index == len(schedule):
+            return render_template("done.html")
+        item = schedule[index]
+        with db() as connection:
+            connection.execute("INSERT INTO exposures VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING", (pid, index, utcnow(), time.time()))
+        return render_template("trial.html", index=index, total=len(schedule))
+
+    @app.get("/image/<int:index>/<side>")
+    def image(index, side):
+        pid, schedule, current = progress()
+        if not pid or index != current or current >= len(schedule) or side not in {"left", "right", "reference"}:
+            abort(404)
+        item = schedule[index]
+        pair = pairs[item["pair_id"]]
+        method = "original" if side == "reference" else item[side + "_method"]
+        asset = pair["assets"][method]
+        # The browser sees only /image/0/left, not method names or source paths.
+        return send_file(root / "images" / f"{asset}.png", mimetype="image/png", download_name=f"image_{side}.png")
+
+    @app.post("/answer")
+    def answer():
+        pid, schedule, current = progress()
+        if not pid:
+            abort(400, "Start the study first.")
+        try:
+            index = int(request.form.get("trial_index", ""))
+        except ValueError:
+            abort(400)
+        if index < current:
+            return redirect(url_for("trial"))  # Double-click/retry: no extra vote.
+        if index != current or index >= len(schedule):
+            abort(400, "Trial is out of order; reload the current trial.")
+        realism, preference = request.form.get("realism"), request.form.get("preference")
+        if realism not in VOTES or preference not in VOTES:
+            abort(400, "Answer both questions using the supplied options.")
+        comment = request.form.get("comment", "").strip()
+        if len(comment) > 1000:
+            abort(400, "Comment is too long.")
+        with db() as connection:
+            exposure = connection.execute("SELECT * FROM exposures WHERE participant_id=? AND trial_index=?", (pid, index)).fetchone()
+            if not exposure:
+                abort(400, "Open the trial before submitting.")
+            connection.execute("INSERT INTO responses VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+                (pid, index, realism, preference, utcnow(), max(0.0, time.time()-exposure["shown_epoch"]), comment))
+        return redirect(url_for("trial"))
+
+    def admin_required(function):
+        @wraps(function)
+        def wrapped(*args, **kwargs):
+            if session.get("admin_until", 0) < time.time():
+                return redirect(url_for("admin_login"))
+            return function(*args, **kwargs)
+        return wrapped
+
+    @app.route("/admin/login", methods=["GET", "POST"])
+    def admin_login():
+        if request.method == "POST":
+            if not hmac.compare_digest(request.form.get("password", "").encode(), password.encode()):
+                return render_template("login.html", error="Incorrect password."), 403
+            session["admin_until"] = time.time()+8*3600
+            return redirect(url_for("admin"))
+        return render_template("login.html")
+
+    @app.post("/admin/logout")
+    def logout():
+        session.pop("admin_until", None)
+        return redirect(url_for("admin_login"))
+
+    def response_rows():
+        with db() as connection:
+            participants = connection.execute("SELECT * FROM participants").fetchall()
+            records = connection.execute("SELECT r.*, e.shown_at FROM responses r JOIN exposures e USING(participant_id, trial_index) ORDER BY r.submitted_at").fetchall()
+        schedules = {p["id"]: json.loads(p["schedule"]) for p in participants}
+        counts = {}
+        for record in records:
+            counts[record["participant_id"]] = counts.get(record["participant_id"], 0)+1
+        rows = []
+        for record in records:
+            row = dict(record)
+            pid, index = row["participant_id"], row["trial_index"]
+            item = schedules[pid][index]
+            pair = pairs[item["pair_id"]]
+            row.update(study_id=manifest["study_id"], participant_complete=counts[pid] == len(schedules[pid]),
+                       pair_id=pair["pair_id"], source_id=pair["source_id"], animal=pair["animal"],
+                       baseline=pair["baseline"], left_method=item["left_method"], right_method=item["right_method"],
+                       left_asset=pair["assets"][item["left_method"]], right_asset=pair["assets"][item["right_method"]],
+                       reference_asset=pair["assets"]["original"], questions_version=manifest["questions_version"], design_version=DESIGN_VERSION)
+            for question in ("realism", "preference"):
+                choice = row[question + "_choice"]
+                row[question + "_winner"] = item[choice+"_method"] if choice in {"left", "right"} else choice
+            rows.append(row)
+        return rows, participants
+
+    @app.get("/admin")
+    @admin_required
+    def admin():
+        rows, participants = response_rows()
+        complete_only = request.args.get("complete") == "1"
+        selected = [r for r in rows if r["participant_complete"]] if complete_only else rows
+        completed = len({r["participant_id"] for r in rows if r["participant_complete"]})
+        return render_template("admin.html", summaries=summarize(selected), complete_only=complete_only,
+                               started=len(participants), completed=completed, judgments=len(selected))
+
+    @app.get("/admin/export/<kind>")
+    @admin_required
+    def export(kind):
+        rows, participants = response_rows()
+        if request.args.get("complete") == "1":
+            rows = [r for r in rows if r["participant_complete"]]
+        if kind == "responses":
+            fields, data = RESPONSE_FIELDS, rows
+        elif kind == "summary":
+            fields, data = SUMMARY_FIELDS, summarize(rows)
+        elif kind == "participants":
+            fields = ["participant_id", "created_at", "assigned_trials", "answered_trials", "complete"]
+            data = []
+            for participant in participants:
+                count = sum(r["participant_id"] == participant["id"] for r in rows)
+                total = len(json.loads(participant["schedule"]))
+                data.append(dict(participant_id=participant["id"], created_at=participant["created_at"],
+                                 assigned_trials=total, answered_trials=count, complete=count == total))
+        else:
+            abort(404)
+        # Neutralize spreadsheet formulas in free text fields without changing DB contents.
+        safe = []
+        for row in data:
+            safe.append({key: "'"+value if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")) else value
+                         for key, value in row.items()})
+        return Response(csv_text(safe, fields), mimetype="text/csv", headers={"Content-Disposition": f'attachment; filename="{kind}.csv"'})
+
+    return app
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--study", default="study")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--max-trials", type=int, choices=[TOTAL_TRIALS], default=TOTAL_TRIALS, help="Fixed at 24 for this balanced study")
+    parser.add_argument("--https", action="store_true", help="Require secure cookies; use behind HTTPS")
+    args = parser.parse_args()
+    from waitress import serve
+    serve(create_app(args.study, max_trials=args.max_trials, secure_cookie=args.https),
+          host=args.host, port=args.port, threads=8)

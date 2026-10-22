@@ -1,0 +1,30 @@
+{% extends 'base.html' %}{% block content %}
+<section class="intro">
+<p class="eyebrow">Photograph comparison study</p>
+<h1>Which edited photograph looks more real?</h1>
+<p class="lead">We are studying different ways to remove or hide animals in photographs. You will compare two edited versions of the same photograph and tell us which looks more like a real photograph.</p>
+<div class="instructions">
+<h2>Why are we doing this?</h2>
+<p>Researchers use computer software to find animals in photographs. To test how reliably this software works when a picture changes, we remove or cover an animal and check how the software responds. In this study, we want to learn how realistic those edited pictures look to people.</p>
+<p><strong>Your task is to judge the photographs.</strong> You do not need to know anything about the software or image editing.</p>
+</div>
+<h2>What has been done to the photographs?</h2>
+<p>Each page shows an original photograph and two edited versions, Image A and Image B. Both edits try to remove or hide the same animal or animals. Some edits fill in the area where the animal was. Others cover the animal with a black patch or make that area blurry. The animal may still be partly visible.</p>
+<p>We want your own judgment of how real the edited photographs look. There is no expected answer.</p>
+<div class="instructions"><h2>How to take part</h2><ol>
+<li><strong>Look at the original photograph.</strong> Use it to see where the animal or animals were before editing.</li>
+<li><strong>Look at Image A and Image B.</strong> Pay attention to the edited area and how it fits the rest of the scene. You can select an image to open a larger view.</li>
+<li><strong>Choose which edited image looks more real.</strong> Consider whether the area looks natural or whether you notice unusual edges, colors, shapes, or blurry patches. Judge how real the picture looks, not just how well the animal is hidden.</li>
+<li><strong>Then tell us which edited image you prefer overall.</strong> This is a separate question, and your answer can be different.</li>
+<li><strong>Save your answers and continue.</strong> If the images look equally real, choose that option. If you cannot decide how real they look, choose “Cannot judge.” The original photograph is only a guide and cannot be chosen.</li>
+</ol></div>
+<p>Image A and Image B can change positions on each page. Please look at both every time. Take the time you need; comments are optional.</p>
+<p><strong>There are {{ estimated_trials }} comparisons: eight for each of three animal species.</strong> Each comparison has two questions.</p>
+<h2>Taking part is your choice</h2>
+<p>You can stop by closing the page. Answers you have already submitted will remain saved. We record your choices, optional comments, timing, and a random code for your session. We do not ask for your name or email. Please do not put personal information in comments.</p>
+<p class="quiet">Your browser remembers your session for up to 30 days using a cookie. Use the same browser to return to an unfinished session. Please take part once. The hosting service may separately keep website access logs.</p>
+<form method="post" action="{{ url_for('start') }}"><input type="hidden" name="csrf" value="{{ csrf() }}">
+<label class="agreement"><input type="checkbox" name="agree" value="yes" required> I have read the information above and want to take part.</label>
+<button type="submit">Start comparing <span aria-hidden="true">→</span></button>
+</form></section>
+{% endblock %}

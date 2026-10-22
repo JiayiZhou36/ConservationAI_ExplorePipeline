@@ -1,0 +1,15 @@
+{% extends 'base.html' %}{% block title %}Study results{% endblock %}{% block content %}
+<p class="eyebrow">Researcher dashboard</p><h1>Perceived realism and overall preference</h1>
+<div class="stats"><div><strong>{{ started }}</strong> started sessions</div><div><strong>{{ completed }}</strong> completed sessions</div><div><strong>{{ judgments }}</strong> included pair responses</div></div>
+<p>Perceived realism is the primary outcome. Overall preference is recorded as a separate secondary outcome. Each pair response contains one judgment for each outcome.</p>
+<div class="toolbar"><a href="{{ url_for('admin') }}">All submitted responses</a><a href="{{ url_for('admin', complete=1) }}">Completed sessions only</a></div>
+<p class="quiet">Current filter: {{ 'Completed sessions only' if complete_only else 'All submitted responses, including unfinished sessions' }}.</p>
+<div class="toolbar"><a href="{{ url_for('export', kind='responses', complete=1 if complete_only else 0) }}">Download responses.csv</a><a href="{{ url_for('export', kind='summary', complete=1 if complete_only else 0) }}">Download summary.csv</a><a href="{{ url_for('export', kind='participants') }}">Download participants.csv</a></div>
+<div class="table-scroll"><table><thead><tr><th>Animal</th><th>Comparison</th><th>Question</th><th>Responses</th><th>Removal wins</th><th>Baseline wins</th><th>Equal</th><th>Cannot judge</th><th>Removal share, decisive</th></tr></thead><tbody>
+{% for row in summaries %}<tr><td>{{ row.animal }}</td><td>remove vs {{ row.baseline }}</td><td>{{ row.question }}</td><td>{{ row.judgments }}</td><td>{{ row.remove_wins }}</td><td>{{ row.baseline_wins }}</td><td>{{ row.ties }}</td><td>{{ row.cannot_judge }}</td><td>{{ '%.1f%%'|format(100*row.remove_share_decisive) if row.remove_share_decisive is not none else 'N/A' }}</td></tr>
+{% else %}<tr><td colspan="9">No responses for this filter yet.</td></tr>{% endfor %}
+</tbody></table></div>
+<p>Removal share among decisive responses = removal wins ÷ (removal wins + baseline wins). Ties and cannot-judge responses are reported separately. The summary CSV also includes shares using all responses.</p>
+<p class="quiet">These are descriptive counts, not significance tests. Responses repeat across participants and source images. Method names are hidden during judging, but edits can remain visually recognizable.</p>
+<form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf() }}"><button class="secondary">Sign out</button></form>
+{% endblock %}

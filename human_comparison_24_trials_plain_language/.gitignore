@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+.vercel/
+/images/
+/demo_images/
+*.sqlite3*
+*.db
+**/session.key
+/study/
+/study_full_resolution/
+/study_previous/
+/study_width1600/
