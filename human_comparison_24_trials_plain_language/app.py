@@ -11,7 +11,7 @@ from functools import wraps
 from pathlib import Path
 
 from flask import Flask, Response, abort, redirect, render_template, request, send_file, session, url_for
-from analysis import SUMMARY_FIELDS, csv_text, summarize, summarize_ratings
+from analysis import SUMMARY_FIELDS, csv_text, summarize, summarize_ratings, summarize_individual_ratings
 from database import Database
 from scheduling import TOTAL_TRIALS, DESIGN_VERSION, build_schedule, validate_pairs
 
@@ -23,7 +23,7 @@ RESPONSE_FIELDS = ["study_id", "participant_id", "participant_complete", "pair_i
                    "reference_asset", "questions_version", "design_version", "shown_at", "submitted_at", "elapsed_seconds", "comment"]
 
 
-RESPONSE_FIELDS += ["second_question_type", "selected_image_rating", "rated_image", "rated_method"]
+RESPONSE_FIELDS += ["second_question_type", "selected_image_rating", "rated_image", "rated_method", "image_a_rating", "image_b_rating", "image_a_rating_answer", "image_b_rating_answer", "image_a_method", "image_b_method"]
 
 def utcnow():
     return datetime.now(timezone.utc).isoformat()
@@ -78,6 +78,15 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
                 realism_choice TEXT NOT NULL, preference_choice TEXT NOT NULL,
                 submitted_at TEXT NOT NULL, elapsed_seconds DOUBLE PRECISION NOT NULL, comment TEXT NOT NULL,
                 PRIMARY KEY (participant_id, trial_index));
+        ''')
+        # Additive table: existing responses and old questionnaires remain intact.
+        connection.executescript('''
+            CREATE TABLE IF NOT EXISTS individual_ratings (
+                participant_id TEXT NOT NULL, trial_index INTEGER NOT NULL,
+                left_rating TEXT NOT NULL, right_rating TEXT NOT NULL,
+                PRIMARY KEY (participant_id, trial_index),
+                FOREIGN KEY (participant_id, trial_index)
+                    REFERENCES responses(participant_id, trial_index));
         ''')
         connection.execute("INSERT INTO metadata VALUES ('study_id', ?) ON CONFLICT DO NOTHING", (manifest["study_id"],))
         old = connection.execute("SELECT value FROM metadata WHERE key='study_id'").fetchone()
@@ -194,12 +203,26 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
             return redirect(url_for("trial"))  # Double-click/retry: no extra vote.
         if index != current or index >= len(schedule):
             abort(400, "Trial is out of order; reload the current trial.")
-        realism, preference = request.form.get("realism"), request.form.get("preference")
-        if realism not in VOTES or preference not in (VOTES | RATING_VOTES):
-            abort(400, "Answer both questions using the supplied options.")
-        # Accept legacy answers from pages opened before deployment, too.
-        if realism == "cannot_judge" and preference in RATING_VOTES and preference != "rating_cannot_judge":
-            abort(400, "You selected Cannot judge in Question 1. Go back and select Cannot judge in Question 2 as well.")
+        form_version = request.form.get("questionnaire_version")
+        left_rating = right_rating = None
+        if form_version == "individual-realism-three-v1":
+            realism = request.form.get("realism")
+            left_rating = request.form.get("left_rating")
+            right_rating = request.form.get("right_rating")
+            if realism not in VOTES or left_rating not in RATING_VOTES or right_rating not in RATING_VOTES:
+                abort(400, "Answer all three questions using the supplied options.")
+            # Retained legacy column; new Q1/Q2 ratings live in individual_ratings.
+            preference = "cannot_judge"
+        elif form_version:
+            abort(400, "Unknown questionnaire version; reload the page.")
+        else:
+            # Support a cached older page submitted across deployment.
+            realism = request.form.get("realism")
+            preference = request.form.get("preference")
+            if realism not in VOTES or preference not in (VOTES | RATING_VOTES):
+                abort(400, "Answer both questions using the supplied options.")
+            if realism == "cannot_judge" and preference in RATING_VOTES and preference != "rating_cannot_judge":
+                abort(400, "Select Cannot judge for the rating as well.")
         comment = request.form.get("comment", "").strip()
         if len(comment) > 1000:
             abort(400, "Comment is too long.")
@@ -209,6 +232,10 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
                 abort(400, "Open the trial before submitting.")
             connection.execute("INSERT INTO responses VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
                 (pid, index, realism, preference, utcnow(), max(0.0, time.time()-exposure["shown_epoch"]), comment))
+            if form_version == "individual-realism-three-v1":
+                connection.execute(
+                    "INSERT INTO individual_ratings VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING",
+                    (pid, index, left_rating, right_rating))
         return redirect(url_for("trial"))
 
     def admin_required(function):
@@ -237,6 +264,8 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
         with db() as connection:
             participants = connection.execute("SELECT * FROM participants").fetchall()
             records = connection.execute("SELECT r.*, e.shown_at FROM responses r JOIN exposures e USING(participant_id, trial_index) ORDER BY r.submitted_at").fetchall()
+            rating_records = connection.execute("SELECT * FROM individual_ratings").fetchall()
+        rating_lookup = {(r["participant_id"], r["trial_index"]): dict(r) for r in rating_records}
         schedules = {p["id"]: json.loads(p["schedule"]) for p in participants}
         counts = {}
         for record in records:
@@ -252,22 +281,40 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
                        baseline=pair["baseline"], left_method=item["left_method"], right_method=item["right_method"],
                        left_asset=pair["assets"][item["left_method"]], right_asset=pair["assets"][item["right_method"]],
                        reference_asset=pair["assets"]["original"], questions_version=manifest["questions_version"], design_version=DESIGN_VERSION)
-            choice = row["realism_choice"]
-            row["realism_winner"] = item[choice + "_method"] if choice in {"left", "right"} else choice
-            second = row["preference_choice"]
-            if second in RATING_VOTES:
-                row["second_question_type"] = "selected_image_realism_rating_v1"
-                row["questions_version"] = "reference-selected-realism-rating-v1"
-                row["selected_image_rating"] = int(second.rsplit("_", 1)[1]) if second != "rating_cannot_judge" else ""
-                row["rated_image"] = {"left": "A", "right": "B", "tie": "both_equal", "cannot_judge": "cannot_judge"}[choice]
-                row["rated_method"] = item[choice + "_method"] if choice in {"left", "right"} else "both_equal" if choice == "tie" else "cannot_judge"
-                row["preference_winner"] = ""
-            else:
-                row["second_question_type"] = "overall_preference"
+            row.update(image_a_method=item["left_method"], image_b_method=item["right_method"],
+                       image_a_rating="", image_b_rating="", image_a_rating_answer="", image_b_rating_answer="")
+            individual = rating_lookup.get((pid, index))
+            if individual:
+                row["questions_version"] = "individual-realism-three-v1"
+                row["second_question_type"] = "individual_image_ratings"
                 row["selected_image_rating"] = ""
                 row["rated_image"] = ""
                 row["rated_method"] = ""
-                row["preference_winner"] = item[second + "_method"] if second in {"left", "right"} else second
+                row["preference_winner"] = ""
+                row["preference_choice"] = ""  # Not a legacy preference answer.
+                choice = row["realism_choice"]
+                row["realism_winner"] = item[choice + "_method"] if choice in {"left", "right"} else choice
+                for side, letter in (("left", "a"), ("right", "b")):
+                    answer = individual[side + "_rating"]
+                    row["image_" + letter + "_rating_answer"] = answer
+                    row["image_" + letter + "_rating"] = int(answer.rsplit("_", 1)[1]) if answer != "rating_cannot_judge" else ""
+            else:
+                choice = row["realism_choice"]
+                row["realism_winner"] = item[choice + "_method"] if choice in {"left", "right"} else choice
+                second = row["preference_choice"]
+                if second in RATING_VOTES:
+                    row["second_question_type"] = "selected_image_realism_rating_v1"
+                    row["questions_version"] = "reference-selected-realism-rating-v1"
+                    row["selected_image_rating"] = int(second.rsplit("_", 1)[1]) if second != "rating_cannot_judge" else ""
+                    row["rated_image"] = {"left": "A", "right": "B", "tie": "both_equal", "cannot_judge": "cannot_judge"}[choice]
+                    row["rated_method"] = item[choice + "_method"] if choice in {"left", "right"} else "both_equal" if choice == "tie" else "cannot_judge"
+                    row["preference_winner"] = ""
+                else:
+                    row["second_question_type"] = "overall_preference"
+                    row["selected_image_rating"] = ""
+                    row["rated_image"] = ""
+                    row["rated_method"] = ""
+                    row["preference_winner"] = item[second + "_method"] if second in {"left", "right"} else second
             rows.append(row)
         return rows, participants
 
@@ -278,7 +325,7 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
         complete_only = request.args.get("complete") == "1"
         selected = [r for r in rows if r["participant_complete"]] if complete_only else rows
         completed = len({r["participant_id"] for r in rows if r["participant_complete"]})
-        return render_template("admin.html", summaries=summarize(selected), rating_summaries=summarize_ratings(selected), complete_only=complete_only,
+        return render_template("admin.html", summaries=summarize(selected), rating_summaries=summarize_ratings(selected), individual_summaries=summarize_individual_ratings(selected), complete_only=complete_only,
                                started=len(participants), completed=completed, judgments=len(selected))
 
     @app.get("/admin/export/<kind>")
@@ -290,7 +337,7 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
         if kind == "responses":
             fields, data = RESPONSE_FIELDS, rows
         elif kind == "summary":
-            fields, data = SUMMARY_FIELDS, summarize(rows) + summarize_ratings(rows)
+            fields, data = SUMMARY_FIELDS, summarize(rows) + summarize_individual_ratings(rows) + summarize_ratings(rows)
         elif kind == "participants":
             fields = ["participant_id", "created_at", "assigned_trials", "answered_trials", "complete"]
             data = []

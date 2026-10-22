@@ -8,33 +8,114 @@
 {% else %}<tr><td colspan="12">No responses for this filter yet.</td></tr>{% endfor %}
 </tbody></table></div>
 {% endmacro %}
+{% macro ratings_table(rating_rows) %}
+<div class="table-scroll"><table><thead><tr><th>Animal</th><th>Baseline</th><th>Rated image / method</th><th>Responses</th><th>Participants</th><th>Image pairs</th><th>Valid ratings</th><th>Cannot judge</th><th>Mean</th><th>Median</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Mostly or completely real (4–5)</th></tr></thead><tbody>
+{% for row in rating_rows %}<tr><td>{{ row.animal }}</td><td>{{ label(row.baseline) }}</td><td>{{ label(row.rated_method) }}</td><td>{{ row.rating_responses }}</td><td>{{ row.participants }}</td><td>{{ row.image_pairs }}</td><td>{{ row.valid_ratings }}</td><td>{{ row.rating_cannot_judge }}</td><td>{{ '%.2f'|format(row.mean_rating) if row.mean_rating is not none else 'N/A' }}</td><td>{{ '%.1f'|format(row.median_rating) if row.median_rating is not none else 'N/A' }}</td><td>{{ row.rating_1 }}</td><td>{{ row.rating_2 }}</td><td>{{ row.rating_3 }}</td><td>{{ row.rating_4 }}</td><td>{{ row.rating_5 }}</td><td>{{ '%.1f%%'|format(100*row.rating_4_or_5_share) if row.rating_4_or_5_share is not none else 'N/A' }}</td></tr>
+{% else %}<tr><td colspan="16">No individual-image ratings for this filter yet.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endmacro %}
 {% block title %}Study results{% endblock %}
 {% block content %}
 <p class="eyebrow">Researcher dashboard</p><h1>Image realism study results</h1>
-<div class="stats"><div><strong>{{ started }}</strong> started sessions</div><div><strong>{{ completed }}</strong> completed sessions</div><div><strong>{{ judgments }}</strong> included pair responses</div></div>
+<div class="stats"><div><strong>{{ started }}</strong> started sessions</div><div><strong>{{ completed }}</strong> completed sessions</div><div><strong>{{ judgments }}</strong> included trial responses</div></div>
 <div class="toolbar"><a href="{{ url_for('admin') }}">All submitted responses</a><a href="{{ url_for('admin', complete=1) }}">Completed sessions only</a></div>
-<p class="quiet">Current filter: {{ 'Completed sessions only' if complete_only else 'All submitted responses, including unfinished sessions' }}.</p>
+<p class="quiet">Current filter: {{ 'Completed sessions only' if complete_only else 'All submitted responses, including unfinished sessions' }}. Each new trial contains two individual ratings and one comparison answer.</p>
 <div class="toolbar"><a href="{{ url_for('export', kind='responses', complete=1 if complete_only else 0) }}">Download responses.csv</a><a href="{{ url_for('export', kind='summary', complete=1 if complete_only else 0) }}">Download summary.csv</a><a href="{{ url_for('export', kind='participants') }}">Download participants.csv</a></div>
-
-<h2>Question 1: Which edited image looks more like a real photograph?</h2>
-<p>Counts show how often participants chose inpainting removal or the traditional baseline. “Decisive” means Image A or Image B was chosen; equal and cannot-judge answers are excluded from that percentage.</p>
-{{ choices_table(summaries|selectattr('question', 'equalto', 'realism')|list) }}
-<p class="quiet">This table includes Question 1 answers from both questionnaire versions. The wording of Question 1 is unchanged. Use questions_version in responses.csv to analyze versions separately.</p>
-
-<h2>Question 2: How much does the chosen image look like a real, unedited photograph?</h2>
-<p>Ratings run from 1 (clearly edited) to 5 (looks completely real). Each row summarizes ratings of the selected method, within one baseline comparison. Shared ratings for equally real images and cannot-judge answers have their own rows.</p>
-<div class="table-scroll"><table><thead><tr><th>Animal</th><th>Baseline</th><th>Rated image / method</th><th>Responses</th><th>Participants</th><th>Image pairs</th><th>Valid ratings</th><th>Cannot judge</th><th>Mean</th><th>Median</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>Mostly or completely real (4–5)</th></tr></thead><tbody>
-{% for row in rating_summaries %}<tr><td>{{ row.animal }}</td><td>{{ label(row.baseline) }}</td><td>{{ label(row.rated_method) }}</td><td>{{ row.rating_responses }}</td><td>{{ row.participants }}</td><td>{{ row.image_pairs }}</td><td>{{ row.valid_ratings }}</td><td>{{ row.rating_cannot_judge }}</td><td>{{ '%.2f'|format(row.mean_rating) if row.mean_rating is not none else 'N/A' }}</td><td>{{ '%.1f'|format(row.median_rating) if row.median_rating is not none else 'N/A' }}</td><td>{{ row.rating_1 }}</td><td>{{ row.rating_2 }}</td><td>{{ row.rating_3 }}</td><td>{{ row.rating_4 }}</td><td>{{ row.rating_5 }}</td><td>{{ '%.1f%%'|format(100*row.rating_4_or_5_share) if row.rating_4_or_5_share is not none else 'N/A' }}</td></tr>
-{% else %}<tr><td colspan="16">No new Question 2 ratings for this filter yet. Older preference answers are shown separately below.</td></tr>{% endfor %}
-</tbody></table></div>
-<p><strong>Interpretation:</strong> These are ratings of images participants selected in Question 1, not ratings of every image. A higher mean does not by itself establish that a method is better overall. Shared ratings are not assigned to either method. Cannot-judge answers are excluded from means, medians, and percentages of ratings 4 or 5.</p>
-
-{% set legacy = summaries|selectattr('question', 'equalto', 'preference')|list %}
-{% if legacy %}
-<h2>Earlier Question 2: Overall preference</h2>
-<p>These answers were collected before Question 2 changed to a realism rating. They are retained separately and are not included in the new rating statistics.</p>
-{{ choices_table(legacy) }}
+<section class="results-overview" aria-labelledby="overall-removal-title">
+<h2 id="overall-removal-title">Overall: how realistic was inpainting removal?</h2>
+<p>Combines all three species and both comparison types. Each removal-image rating and comparison answer from the new three-question study is counted once here.</p>
+{% set overall = namespace(valid=0, rating_total=0, high=0, missing=0, trials=0, wins=0, baseline_wins=0, ties=0, unknown=0) %}
+{% for row in individual_summaries if row.animal == 'ALL_ANIMALS' and row.rating_position == 'ALL_POSITIONS' and row.rated_method == 'remove' %}
+{% set overall.valid = overall.valid + row.valid_ratings %}
+{% set overall.rating_total = overall.rating_total + row.rating_1 + 2*row.rating_2 + 3*row.rating_3 + 4*row.rating_4 + 5*row.rating_5 %}
+{% set overall.high = overall.high + row.rating_4 + row.rating_5 %}
+{% set overall.missing = overall.missing + row.rating_cannot_judge %}
+{% endfor %}
+{% for row in summaries if row.animal == 'ALL_ANIMALS' and row.question == 'comparison_realism' %}
+{% set overall.trials = overall.trials + row.judgments %}
+{% set overall.wins = overall.wins + row.remove_wins %}
+{% set overall.baseline_wins = overall.baseline_wins + row.baseline_wins %}
+{% set overall.ties = overall.ties + row.ties %}
+{% set overall.unknown = overall.unknown + row.cannot_judge %}
+{% endfor %}
+{% if overall.trials %}
+<div class="method-card-grid">
+<div class="method-result-card">
+<h3>How real did removal images look?</h3>
+<p class="result-number">{{ '%.2f'|format(overall.rating_total / overall.valid) if overall.valid else 'N/A' }} <span>/ 5 average realism</span></p>
+<p><strong>{{ '%.1f%%'|format(100*overall.high/overall.valid) if overall.valid else 'N/A' }}</strong> of valid ratings described removal images as mostly or completely real (4–5).</p>
+<p class="quiet">{{ overall.valid }} valid removal ratings; {{ overall.missing }} cannot judge. The mean uses all valid ratings, rather than averaging subgroup means.</p>
+</div>
+<div class="method-result-card">
+<h3>Was removal chosen as more realistic?</h3>
+<p class="result-number">{{ '%.1f%%'|format(100*overall.wins/overall.trials) }} <span>of all comparison answers chose removal</span></p>
+<p>{{ overall.wins }} of {{ overall.trials }} trial answers chose removal; {{ overall.baseline_wins }} chose a traditional edit; {{ overall.ties }} said equally real; {{ overall.unknown }} could not judge.</p>
+{% set decisive = overall.wins + overall.baseline_wins %}
+{% if decisive %}<p>Among the {{ decisive }} answers choosing one image, <strong>{{ '%.1f%%'|format(100*overall.wins/decisive) }}</strong> chose removal.</p>{% else %}<p>No decisive choices yet.</p>{% endif %}
+</div>
+</div>
+<p class="overview-verdict">{% if overall.wins > overall.baseline_wins %}Across both comparison types, removal was chosen as more realistic more often than the traditional edits.{% elif overall.wins < overall.baseline_wins %}Across both comparison types, traditional edits were chosen as more realistic more often than removal.{% elif overall.wins %}Removal and traditional edits were chosen equally often across both comparison types.{% else %}There are no decisive choices yet.{% endif %}</p>
+{% else %}<p>No three-question study responses under the current filter yet.</p>{% endif %}
+<p class="quiet">This is preference for visual realism, not overall liking. The pooled result depends on the mix of submitted comparisons and species; partial sessions may be unbalanced. The same participant or source image may contribute multiple observations. Older questionnaires are excluded. These results are descriptive, not a significance test.</p>
+</section>
+<section class="results-overview" aria-labelledby="overview-title">
+<h2 id="overview-title">At a glance: how real did each method look?</h2>
+<p>This overview pools the three animal species. Ratings come from both images on every new trial. “Chosen as more real” comes from Question 3; it does not measure overall preference.</p>
+{% for baseline in ['blurring','black_mask'] %}
+{% set comparison = summaries|selectattr('question','equalto','comparison_realism')|selectattr('animal','equalto','ALL_ANIMALS')|selectattr('baseline','equalto',baseline)|list %}
+{% set rating_rows = individual_summaries|selectattr('rating_position','equalto','ALL_POSITIONS')|selectattr('animal','equalto','ALL_ANIMALS')|selectattr('baseline','equalto',baseline)|list %}
+<article class="overview-comparison">
+<h3>Inpainting removal compared with {{ label(baseline) }}</h3>
+{% if comparison %}
+{% set votes = comparison[0] %}
+<div class="method-card-grid">
+{% for method in ['remove',baseline] %}
+{% set method_ratings = rating_rows|selectattr('rated_method','equalto',method)|list %}
+{% set wins = votes.remove_wins if method == 'remove' else votes.baseline_wins %}
+<div class="method-result-card">
+<h4>{{ label(method) }}</h4>
+{% if method_ratings %}
+{% set rating = method_ratings[0] %}
+<p class="result-number">{{ '%.2f'|format(rating.mean_rating) if rating.mean_rating is not none else 'N/A' }} <span>/ 5 average realism</span></p>
+<p><strong>{{ '%.1f%%'|format(100*rating.rating_4_or_5_share) if rating.rating_4_or_5_share is not none else 'N/A' }}</strong> of valid ratings said it looked mostly or completely real (4–5).</p>
+<p class="quiet">{{ rating.valid_ratings }} valid ratings; {{ rating.rating_cannot_judge }} cannot judge.</p>
 {% endif %}
-<p class="quiet">ALL_ANIMALS rows pool species within each baseline; species rows show the same responses separately. Do not add pooled rows to species rows. Participants and images repeat across responses. These are descriptive summaries, not statistical significance tests. The summary CSV includes separate rows for both questions and older preference answers, if present. Blank fields mean a statistic does not apply.</p>
+<p><strong>{{ '%.1f%%'|format(100*wins/votes.judgments) }}</strong> chose this method as more real: {{ wins }} of {{ votes.judgments }} trial answers, including ties and cannot-judge answers in the denominator.</p>
+</div>
+{% endfor %}
+</div>
+<p>{{ votes.ties }} of {{ votes.judgments }} answers said both looked equally real ({{ '%.1f%%'|format(100*votes.ties/votes.judgments) }}); {{ votes.cannot_judge }} could not judge ({{ '%.1f%%'|format(100*votes.cannot_judge/votes.judgments) }}).</p>
+{% if votes.decisive_judgments %}
+<p class="overview-verdict"><strong>Among people who chose one image:</strong>
+{% if votes.remove_wins > votes.baseline_wins %}Inpainting removal was chosen more often.{% elif votes.baseline_wins > votes.remove_wins %}{{ label(baseline) }} was chosen more often.{% else %}Both methods were chosen equally often.{% endif %}
+Inpainting removal received {{ '%.1f%%'|format(100*votes.remove_share_decisive) }} of the {{ votes.decisive_judgments }} decisive choices.</p>
+{% else %}<p class="overview-verdict">No one has chosen one image over the other yet; all answers are equal or cannot judge.</p>{% endif %}
+{% else %}<p>No three-question study responses for this comparison under the current filter yet.</p>{% endif %}
+</article>
+{% endfor %}
+<p class="quiet">The same participant and source image can contribute more than once. These are descriptive results, not evidence of statistical significance. Inpainting results are shown separately for the blur and black-mask comparisons. Older questionnaires are excluded from this overview.</p>
+</section>
+<h2>Individual-image ratings by editing method</h2>
+<p>Combines Question 1 (Image A) and Question 2 (Image B) using the actual editing method, regardless of display position. Every new trial contributes a rating answer for both methods. Results are separated by species and baseline comparison. Ratings run from 1 (looks clearly edited) to 5 (looks completely real).</p>
+{{ ratings_table(individual_summaries|selectattr('rating_position','equalto','ALL_POSITIONS')|list) }}
+<h2>Question 1: Image A realism rating</h2>
+{{ ratings_table(individual_summaries|selectattr('rating_position','equalto','A')|list) }}
+<h2>Question 2: Image B realism rating</h2>
+{{ ratings_table(individual_summaries|selectattr('rating_position','equalto','B')|list) }}
+<p class="quiet">Questions 1 and 2 use the same scale. Method positions are randomized. Cannot-judge answers are counted separately and excluded from means, medians, and percentages rated 4 or 5.</p>
+<h2>Question 3: Which edited image looks more real?</h2>
+<p>Decisive answers choose Image A or Image B. The inpainting share divides inpainting choices by all decisive choices; equal and cannot-judge answers are excluded from this percentage.</p>
+{{ choices_table(summaries|selectattr('question','equalto','comparison_realism')|list) }}
+{% set old_choices = summaries|rejectattr('question','equalto','comparison_realism')|list %}
+{% if old_choices or rating_summaries %}
+<h2>Earlier questionnaire results — separate from the three-question study</h2>
+<p>Older questionnaires used a different question order and sometimes rated only the chosen image. Those results are not included in the new tables above.</p>
+{% set old_realism = old_choices|selectattr('question','equalto','realism')|list %}
+{% if old_realism %}<h3>Earlier comparison question</h3>{{ choices_table(old_realism) }}{% endif %}
+{% if rating_summaries %}<h3>Earlier selected-image ratings</h3>{{ ratings_table(rating_summaries) }}{% endif %}
+{% set old_preference = old_choices|selectattr('question','equalto','preference')|list %}
+{% if old_preference %}<h3>Earlier overall preference</h3>{{ choices_table(old_preference) }}{% endif %}
+{% endif %}
+<p class="quiet">ALL_ANIMALS rows pool species within each comparison. Do not add pooled rows to species rows, or combined-position summaries to the separate A/B tables. Inpainting ratings are kept separate for the blur and black-mask comparisons. Responses repeat across participants and source images; these are descriptive statistics, not significance tests. Use questions_version to separate questionnaires. The summary CSV contains the combined and question-specific tables as separate rows.</p>
 <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf() }}"><button class="secondary">Sign out</button></form>
 {% endblock %}

@@ -1,4 +1,13 @@
-{% extends 'base.html' %}{% block content %}
+{% extends 'base.html' %}
+{% macro question_preview(side, label) %}
+<figure class="question-preview">
+<figcaption>IMAGE {{ label }}</figcaption>
+<a href="{{ url_for('image', index=index, side=side) }}" target="_blank" rel="noopener" aria-label="Open Image {{ label }} at full size in a new tab">
+<img class="study-image" src="{{ url_for('image', index=index, side=side) }}" alt="Reference view of edited Image {{ label }}" decoding="async">
+</a></figure>
+{% endmacro %}
+{% block content %}
+
 <div class="trial-heading"><div><p class="eyebrow">Comparison {{ index + 1 }} of {{ total }}</p><h1>Which edited photograph looks more real?</h1></div><p class="quiet">Select an image for a larger view.</p></div>
 <progress value="{{ index }}" max="{{ total }}" aria-label="Completed comparisons"></progress>
 <div class="trial-purpose"><strong>What was changed?</strong> Both versions below try to remove or hide the same animal or animals shown in the original. Compare how real the edited photographs look, especially the area where the animal was.</div>
@@ -15,19 +24,46 @@
 <noscript><p>Please enable JavaScript so the page can check that all three images have loaded before you answer.</p></noscript>
 <form method="post" action="{{ url_for('answer') }}" class="answer-form">
 <input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="trial_index" value="{{ index }}">
-<fieldset><legend>1. Which edited image looks more like a real photograph?</legend>
-<p class="quiet">Look at the area where the animal was and how it fits the surrounding scene. Judge how real the picture looks, not just how well the animal is hidden.</p>
+<input type="hidden" name="questionnaire_version" value="individual-realism-three-v1">
+{% for field, image_label, number in [('left_rating','A',1),('right_rating','B',2)] %}
+<fieldset>
+<legend>{{ number }}. How much does Image {{ image_label }} look like a real, unedited photograph?</legend>
+<div class="question-with-preview">
+<aside class="question-references" aria-label="Image {{ image_label }} reference">
+{{ question_preview('left' if image_label == 'A' else 'right', image_label) }}
+<p class="preview-hint">Select the image for a larger view.</p>
+</aside>
+<div class="question-answers">
+<p class="quiet">Rate Image {{ image_label }} on its own. Focus on the area where the animal was. Does that area look natural and fit the rest of the photograph? Judge how natural it looks, rather than how well the animal is hidden.</p>
 <div class="choices">
-{% for value, label in [('left','Image A'),('right','Image B'),('tie','Both look equally real'),('cannot_judge','Cannot judge')] %}
-<label><input type="radio" name="realism" value="{{ value }}" required><span>{{ label }}</span></label>
-{% endfor %}</div></fieldset>
-<fieldset><legend>2. How much does the image you chose look like a real, unedited photograph?</legend>
-<p class="quiet">Focus on the area where the animal was. Does that area look natural and fit the rest of the photograph? Judge how natural the photograph looks, rather than how well the animal is hidden.</p>
-<div class="choices">
-{% for value, label in [('rating_1','1 — Clearly edited: The changed area looks obviously unnatural.'),('rating_2','2 — Mostly looks edited: Several things in the changed area look unnatural.'),('rating_3','3 — Somewhat natural: Some parts look natural, but others look edited.'),('rating_4','4 — Mostly looks real: The changed area looks natural, with only small signs of editing.'),('rating_5','5 — Looks completely real: I cannot notice any signs of editing.'),('rating_cannot_judge','Cannot judge')] %}
-<label><input type="radio" name="preference" value="{{ value }}" required><span>{{ label }}</span></label>
+{% for value, label, description in [
+('rating_1', '1 — Looks clearly edited', 'The changed area looks obviously unnatural.'),
+('rating_2', '2 — Looks mostly edited', 'The changed area shows several obvious signs of editing.'),
+('rating_3', '3 — Looks partly real and partly edited', 'Some parts look natural, but others look edited.'),
+('rating_4', '4 — Looks mostly real', 'The changed area looks natural, with only small signs of editing.'),
+('rating_5', '5 — Looks completely real', 'I cannot notice any signs of editing.'),
+('rating_cannot_judge', 'I cannot judge', 'I am unsure how realistic the changed area looks.')
+] %}
+<label><input type="radio" name="{{ field }}" value="{{ value }}" required><span><strong>{{ label }}</strong><small class="choice-description">{{ description }}</small></span></label>
 {% endfor %}</div>
-<p class="quiet">If you chose “Both look equally real” in Question 1, give one rating that describes both images. If you chose “Cannot judge,” select “Cannot judge” here too.</p>
+</div></div>
+</fieldset>
+{% endfor %}
+<fieldset>
+<legend>3. Which edited image looks more like a real, unedited photograph?</legend>
+<div class="question-with-preview">
+<aside class="question-references comparison-references" aria-label="Images A and B for comparison">
+{{ question_preview('left', 'A') }}
+{{ question_preview('right', 'B') }}
+<p class="preview-hint">Select either image for a larger view.</p>
+</aside>
+<div class="question-answers">
+<p class="quiet">Now compare Image A and Image B. Consider the edited area and how it fits the surrounding scene. You can give the same rating to both images above and still choose one here if it looks a little more real.</p>
+<div class="choices">
+{% for value, label in [('left','Image A looks more real'),('right','Image B looks more real'),('tie','Both look equally real'),('cannot_judge','I cannot judge')] %}
+<label><input type="radio" name="realism" value="{{ value }}" required><span>{{ label }}</span></label>
+{% endfor %}</div>
+</div></div>
 </fieldset>
 <label for="comment">What made either image look real or unreal to you? <span class="quiet">Optional · no personal information</span></label>
 <textarea id="comment" name="comment" rows="2" maxlength="1000" placeholder="You can describe anything you noticed in Image A or Image B."></textarea>
