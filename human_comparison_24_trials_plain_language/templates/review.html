@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% macro rating_label(answer) %}{{ {'rating_1':'1 — Looks clearly edited','rating_2':'2 — Looks mostly edited','rating_3':'3 — Looks partly real and partly edited','rating_4':'4 — Looks mostly real','rating_5':'5 — Looks completely real','rating_cannot_judge':'I cannot judge'}.get(answer, 'Earlier questionnaire / no individual rating') }}{% endmacro %}
+{% block content %}
+<p class="eyebrow">Review before submitting</p><h1>Review your saved answers</h1>
+<p>You have saved answers for <strong>{{ answered }} of {{ total }}</strong> comparisons. Select Edit to see the photographs again and revise your answers. Your answers are still drafts.</p>
+<div class="table-scroll"><table><thead><tr><th>Comparison</th><th>Animal</th><th>Image A rating</th><th>Image B rating</th><th>Which looks more real?</th><th>Review</th></tr></thead><tbody>
+{% for item in items %}<tr><td>{{ item.index+1 }}</td><td>{{ item.animal }}</td>
+<td>{{ rating_label(item.a) if item.saved else 'Not answered' }}</td><td>{{ rating_label(item.b) if item.saved else 'Not answered' }}</td>
+<td>{{ {'left':'Image A','right':'Image B','tie':'Both equally real','cannot_judge':'I cannot judge'}.get(item.choice, 'Not answered') }}</td>
+<td><a href="{{ url_for('trial', index=item.index) }}">{{ 'Edit' if item.saved else 'Answer' }} comparison {{ item.index+1 }}</a></td></tr>{% endfor %}
+</tbody></table></div>
+{% if ready %}
+<section class="instructions"><h2>Ready to submit?</h2><p>After you select Submit study, all answers will be final. You will not be able to change them.</p>
+<form method="post" action="{{ url_for('submit_study') }}"><input type="hidden" name="csrf" value="{{ csrf() }}">
+<label class="agreement"><input type="checkbox" name="confirm_final" value="yes" required> I have reviewed my answers and am ready to submit them as final.</label>
+<button type="submit">Submit study</button></form></section>
+{% else %}<p><strong>Please answer all {{ total }} comparisons before submitting.</strong> Use the Answer links above to finish.</p>{% endif %}
+{% endblock %}

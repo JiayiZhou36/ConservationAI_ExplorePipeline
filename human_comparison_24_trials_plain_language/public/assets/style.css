@@ -43,3 +43,5 @@
 .result-number span{display:block;font-size:.95rem;font-weight:400;color:#526159}
 .overview-verdict{padding:14px;background:#fff;border-radius:8px}
 @media(max-width:700px){.method-card-grid{grid-template-columns:1fr}.overview-comparison{padding:16px}}
+
+.study-navigation{justify-content:flex-start;flex-wrap:wrap}.study-navigation button{min-width:160px}

@@ -23,7 +23,7 @@ RESPONSE_FIELDS = ["study_id", "participant_id", "participant_complete", "pair_i
                    "reference_asset", "questions_version", "design_version", "shown_at", "submitted_at", "elapsed_seconds", "comment"]
 
 
-RESPONSE_FIELDS += ["second_question_type", "selected_image_rating", "rated_image", "rated_method", "image_a_rating", "image_b_rating", "image_a_rating_answer", "image_b_rating_answer", "image_a_method", "image_b_method"]
+RESPONSE_FIELDS += ["second_question_type", "selected_image_rating", "rated_image", "rated_method", "image_a_rating", "image_b_rating", "image_a_rating_answer", "image_b_rating_answer", "image_a_method", "image_b_method", "response_status", "final_submitted_at", "submission_type", "workflow_version"]
 
 def utcnow():
     return datetime.now(timezone.utc).isoformat()
@@ -88,6 +88,11 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
                 FOREIGN KEY (participant_id, trial_index)
                     REFERENCES responses(participant_id, trial_index));
         ''')
+        connection.executescript('''
+            CREATE TABLE IF NOT EXISTS study_submissions (
+                participant_id TEXT PRIMARY KEY REFERENCES participants(id),
+                final_submitted_at TEXT NOT NULL, submission_type TEXT NOT NULL);
+        ''')
         connection.execute("INSERT INTO metadata VALUES ('study_id', ?) ON CONFLICT DO NOTHING", (manifest["study_id"],))
         old = connection.execute("SELECT value FROM metadata WHERE key='study_id'").fetchone()
         if old and old["value"] != manifest["study_id"]:
@@ -101,6 +106,17 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
             design = connection.execute("SELECT value FROM metadata WHERE key='design_version'").fetchone()
         if design["value"] != DESIGN_VERSION:
             raise ValueError("Database study design differs. Use a fresh study folder/database.")
+        # Claim this migration once, so later deployments cannot auto-finalize drafts.
+        claimed = connection.execute(
+            "INSERT INTO metadata VALUES ('review_submit_workflow', 'v1') ON CONFLICT DO NOTHING RETURNING key"
+        ).fetchone()
+        if claimed:
+            for participant in connection.execute("SELECT id, schedule FROM participants").fetchall():
+                count = connection.execute("SELECT COUNT(*) AS n FROM responses WHERE participant_id=?", (participant["id"],)).fetchone()["n"]
+                if count == len(json.loads(participant["schedule"])):
+                    connection.execute("INSERT INTO study_submissions VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+                                       (participant["id"], utcnow(), "legacy_completed_before_review_workflow"))
+
 
     def csrf():
         if "csrf" not in session:
@@ -139,6 +155,20 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
         current = next((i for i in range(len(schedule)) if i not in completed), len(schedule))
         return pid, schedule, current
 
+    def submission(pid, connection=None):
+        if connection is not None:
+            return connection.execute("SELECT * FROM study_submissions WHERE participant_id=?", (pid,)).fetchone()
+        with db() as connection:
+            return submission(pid, connection)
+
+    def lock_participant(connection, pid):
+        # Both saving and final submission take the same lock. A concurrent save
+        # cannot change answers after final submission commits.
+        if database.postgres:
+            connection.execute("SELECT id FROM participants WHERE id=? FOR UPDATE", (pid,)).fetchone()
+        else:
+            connection.execute("BEGIN IMMEDIATE")
+
     @app.get("/assets/<name>")
     def assets(name):
         if name not in {"style.css", "study.js"}:
@@ -168,20 +198,69 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
 
     @app.get("/trial")
     def trial():
-        pid, schedule, index = progress()
+        pid, schedule, current = progress()
         if not pid:
             return redirect(url_for("home"))
-        if index == len(schedule):
+        if submission(pid):
             return render_template("done.html")
-        item = schedule[index]
+        try:
+            index = int(request.args.get("index", current))
+        except (ValueError, TypeError):
+            abort(400, "Invalid comparison number.")
+        if index == len(schedule):
+            return redirect(url_for("review"))
+        if not 0 <= index < len(schedule):
+            abort(404)
         with db() as connection:
             connection.execute("INSERT INTO exposures VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING", (pid, index, utcnow(), time.time()))
-        return render_template("trial.html", index=index, total=len(schedule))
+            saved = connection.execute("SELECT * FROM responses WHERE participant_id=? AND trial_index=?", (pid, index)).fetchone()
+            ratings = connection.execute("SELECT * FROM individual_ratings WHERE participant_id=? AND trial_index=?", (pid, index)).fetchone()
+            answered = connection.execute("SELECT COUNT(*) AS n FROM responses WHERE participant_id=?", (pid,)).fetchone()["n"]
+        answers = dict(saved) if saved else {}
+        if ratings:
+            answers.update(dict(ratings))
+        return render_template("trial.html", index=index, total=len(schedule), answers=answers, answered=answered)
+
+    @app.get("/review")
+    def review():
+        pid, schedule, current = progress()
+        if not pid:
+            return redirect(url_for("home"))
+        if submission(pid):
+            return render_template("done.html")
+        with db() as connection:
+            records = {r["trial_index"]: dict(r) for r in connection.execute("SELECT * FROM responses WHERE participant_id=?", (pid,))}
+            ratings = {r["trial_index"]: dict(r) for r in connection.execute("SELECT * FROM individual_ratings WHERE participant_id=?", (pid,))}
+        items = []
+        for index, item in enumerate(schedule):
+            saved = records.get(index)
+            rating = ratings.get(index, {})
+            items.append(dict(index=index, animal=pairs[item["pair_id"]]["animal"], saved=bool(saved),
+                              a=rating.get("left_rating"), b=rating.get("right_rating"),
+                              choice=saved["realism_choice"] if saved else None))
+        return render_template("review.html", items=items, answered=len(records), total=len(schedule), ready=len(records)==len(schedule))
+
+    @app.post("/submit-study")
+    def submit_study():
+        pid, schedule, current = progress()
+        if not pid:
+            abort(400, "Start the study first.")
+        if request.form.get("confirm_final") != "yes":
+            abort(400, "Confirm that you are ready to submit your final answers.")
+        with db() as connection:
+            lock_participant(connection, pid)
+            if not submission(pid, connection):
+                completed = {r["trial_index"] for r in connection.execute("SELECT trial_index FROM responses WHERE participant_id=?", (pid,))}
+                if completed != set(range(len(schedule))):
+                    abort(400, "Answer all comparisons before submitting the study.")
+                connection.execute("INSERT INTO study_submissions VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+                                   (pid, utcnow(), "participant_final_submit"))
+        return redirect(url_for("trial"))
 
     @app.get("/image/<int:index>/<side>")
     def image(index, side):
         pid, schedule, current = progress()
-        if not pid or index != current or current >= len(schedule) or side not in {"left", "right", "reference"}:
+        if not pid or not 0 <= index < len(schedule) or submission(pid) or side not in {"left", "right", "reference"}:
             abort(404)
         item = schedule[index]
         pair = pairs[item["pair_id"]]
@@ -199,10 +278,20 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
             index = int(request.form.get("trial_index", ""))
         except ValueError:
             abort(400)
-        if index < current:
-            return redirect(url_for("trial"))  # Double-click/retry: no extra vote.
-        if index != current or index >= len(schedule):
-            abort(400, "Trial is out of order; reload the current trial.")
+        if submission(pid):
+            abort(403, "Your study has been submitted. Answers can no longer be changed.")
+        if not 0 <= index < len(schedule):
+            abort(400, "Invalid comparison number.")
+        navigation = request.form.get("navigate", "next")
+        if navigation not in {"previous", "next", "review"}:
+            abort(400)
+        # Previous can leave a new unanswered page. Complete answers are saved.
+        if navigation == "previous" and request.form.get("questionnaire_version") == "individual-realism-three-v1":
+            complete = (request.form.get("realism") in VOTES and
+                        request.form.get("left_rating") in RATING_VOTES and
+                        request.form.get("right_rating") in RATING_VOTES)
+            if not complete:
+                return redirect(url_for("trial", index=max(0, index-1)))
         form_version = request.form.get("questionnaire_version")
         left_rating = right_rating = None
         if form_version == "individual-realism-three-v1":
@@ -227,16 +316,29 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
         if len(comment) > 1000:
             abort(400, "Comment is too long.")
         with db() as connection:
+            lock_participant(connection, pid)
+            if submission(pid, connection):
+                abort(403, "Your study has been submitted. Answers can no longer be changed.")
             exposure = connection.execute("SELECT * FROM exposures WHERE participant_id=? AND trial_index=?", (pid, index)).fetchone()
             if not exposure:
                 abort(400, "Open the trial before submitting.")
-            connection.execute("INSERT INTO responses VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+            connection.execute("""INSERT INTO responses VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (participant_id, trial_index) DO UPDATE SET
+                realism_choice=excluded.realism_choice, preference_choice=excluded.preference_choice,
+                submitted_at=excluded.submitted_at, elapsed_seconds=excluded.elapsed_seconds,
+                comment=excluded.comment""",
                 (pid, index, realism, preference, utcnow(), max(0.0, time.time()-exposure["shown_epoch"]), comment))
             if form_version == "individual-realism-three-v1":
                 connection.execute(
-                    "INSERT INTO individual_ratings VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING",
+                    """INSERT INTO individual_ratings VALUES (?, ?, ?, ?)
+                    ON CONFLICT (participant_id, trial_index) DO UPDATE SET
+                    left_rating=excluded.left_rating, right_rating=excluded.right_rating""",
                     (pid, index, left_rating, right_rating))
-        return redirect(url_for("trial"))
+            else:
+                connection.execute("DELETE FROM individual_ratings WHERE participant_id=? AND trial_index=?", (pid, index))
+        if navigation == "review" or (navigation == "next" and index == len(schedule)-1):
+            return redirect(url_for("review"))
+        return redirect(url_for("trial", index=max(0, index-1) if navigation == "previous" else index+1))
 
     def admin_required(function):
         @wraps(function)
@@ -262,7 +364,10 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
 
     def response_rows():
         with db() as connection:
-            participants = connection.execute("SELECT * FROM participants").fetchall()
+            participants = [dict(p) for p in connection.execute("SELECT * FROM participants").fetchall()]
+            submissions = {r["participant_id"]: dict(r) for r in connection.execute("SELECT * FROM study_submissions").fetchall()}
+            for participant in participants:
+                participant.update(submissions.get(participant["id"], {}))
             records = connection.execute("SELECT r.*, e.shown_at FROM responses r JOIN exposures e USING(participant_id, trial_index) ORDER BY r.submitted_at").fetchall()
             rating_records = connection.execute("SELECT * FROM individual_ratings").fetchall()
         rating_lookup = {(r["participant_id"], r["trial_index"]): dict(r) for r in rating_records}
@@ -276,7 +381,11 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
             pid, index = row["participant_id"], row["trial_index"]
             item = schedules[pid][index]
             pair = pairs[item["pair_id"]]
-            row.update(study_id=manifest["study_id"], participant_complete=counts[pid] == len(schedules[pid]),
+            row.update(study_id=manifest["study_id"], participant_complete=pid in submissions,
+                       response_status="submitted" if pid in submissions else "draft",
+                       final_submitted_at=submissions.get(pid, {}).get("final_submitted_at", ""),
+                       submission_type=submissions.get(pid, {}).get("submission_type", ""),
+                       workflow_version="review-submit-v1",
                        pair_id=pair["pair_id"], source_id=pair["source_id"], animal=pair["animal"],
                        baseline=pair["baseline"], left_method=item["left_method"], right_method=item["right_method"],
                        left_asset=pair["assets"][item["left_method"]], right_asset=pair["assets"][item["right_method"]],
@@ -322,7 +431,7 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
     @admin_required
     def admin():
         rows, participants = response_rows()
-        complete_only = request.args.get("complete") == "1"
+        complete_only = request.args.get("complete", "1") == "1"
         selected = [r for r in rows if r["participant_complete"]] if complete_only else rows
         completed = len({r["participant_id"] for r in rows if r["participant_complete"]})
         return render_template("admin.html", summaries=summarize(selected), rating_summaries=summarize_ratings(selected), individual_summaries=summarize_individual_ratings(selected), complete_only=complete_only,
@@ -332,20 +441,22 @@ def create_app(study_dir="study", admin_password=None, max_trials=TOTAL_TRIALS, 
     @admin_required
     def export(kind):
         rows, participants = response_rows()
-        if request.args.get("complete") == "1":
+        if kind != "participants" and request.args.get("complete", "1") == "1":
             rows = [r for r in rows if r["participant_complete"]]
         if kind == "responses":
             fields, data = RESPONSE_FIELDS, rows
         elif kind == "summary":
             fields, data = SUMMARY_FIELDS, summarize(rows) + summarize_individual_ratings(rows) + summarize_ratings(rows)
         elif kind == "participants":
-            fields = ["participant_id", "created_at", "assigned_trials", "answered_trials", "complete"]
+            fields = ["participant_id", "created_at", "assigned_trials", "answered_trials", "complete", "response_status", "final_submitted_at", "submission_type"]
             data = []
             for participant in participants:
                 count = sum(r["participant_id"] == participant["id"] for r in rows)
                 total = len(json.loads(participant["schedule"]))
                 data.append(dict(participant_id=participant["id"], created_at=participant["created_at"],
-                                 assigned_trials=total, answered_trials=count, complete=count == total))
+                                 assigned_trials=total, answered_trials=count, complete=bool(participant.get("final_submitted_at")),
+                                 response_status="submitted" if participant.get("final_submitted_at") else "draft",
+                                 final_submitted_at=participant.get("final_submitted_at", ""), submission_type=participant.get("submission_type", "")))
         else:
             abort(404)
         # Neutralize spreadsheet formulas in free text fields without changing DB contents.

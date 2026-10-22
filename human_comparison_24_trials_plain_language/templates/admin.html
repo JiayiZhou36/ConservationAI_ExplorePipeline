@@ -17,9 +17,10 @@
 {% block title %}Study results{% endblock %}
 {% block content %}
 <p class="eyebrow">Researcher dashboard</p><h1>Image realism study results</h1>
-<div class="stats"><div><strong>{{ started }}</strong> started sessions</div><div><strong>{{ completed }}</strong> completed sessions</div><div><strong>{{ judgments }}</strong> included trial responses</div></div>
-<div class="toolbar"><a href="{{ url_for('admin') }}">All submitted responses</a><a href="{{ url_for('admin', complete=1) }}">Completed sessions only</a></div>
-<p class="quiet">Current filter: {{ 'Completed sessions only' if complete_only else 'All submitted responses, including unfinished sessions' }}. Each new trial contains two individual ratings and one comparison answer.</p>
+<p>Submitted studies are shown by default. Draft answers remain editable and are included only when you select All saved responses. Earlier completed studies are preserved as submitted.</p>
+<div class="stats"><div><strong>{{ started }}</strong> started sessions</div><div><strong>{{ completed }}</strong> submitted studies</div><div><strong>{{ judgments }}</strong> included trial responses</div></div>
+<div class="toolbar"><a href="{{ url_for('admin', complete=0) }}">All saved responses (including drafts)</a><a href="{{ url_for('admin', complete=1) }}">Submitted studies only</a></div>
+<p class="quiet">Current filter: {{ 'Submitted studies only' if complete_only else 'All saved responses, including editable drafts' }}. Each new trial contains two individual ratings and one comparison answer.</p>
 <div class="toolbar"><a href="{{ url_for('export', kind='responses', complete=1 if complete_only else 0) }}">Download responses.csv</a><a href="{{ url_for('export', kind='summary', complete=1 if complete_only else 0) }}">Download summary.csv</a><a href="{{ url_for('export', kind='participants') }}">Download participants.csv</a></div>
 <section class="results-overview" aria-labelledby="overall-removal-title">
 <h2 id="overall-removal-title">Overall: how realistic was inpainting removal?</h2>

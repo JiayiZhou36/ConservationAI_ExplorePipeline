@@ -17,12 +17,12 @@
 <li><strong>Rate Image A on its own.</strong> Choose from 1 (looks clearly edited) to 5 (looks completely real). Each answer has a short explanation.</li>
 <li><strong>Rate Image B using the same scale.</strong> Give your own judgment of each image. Both images can receive the same rating.</li>
 <li><strong>Then choose which image looks more real.</strong> Select Image A, Image B, or “Both look equally real.” You can select “I cannot judge” for any question you are unsure about.</li>
-<li><strong>Save your three answers and continue.</strong> The original photograph is a guide and is not rated. Judge how natural the edited photographs look, rather than how well the animal is hidden.</li>
+<li><strong>Save your three answers and continue.</strong> Use Previous and Next to review or change answers. At the end, review your saved answers and select Submit study. Your answers are final only after that step. The original photograph is a guide and is not rated. Judge how natural the edited photographs look, rather than how well the animal is hidden.</li>
 </ol></div>
 <p>Image A and Image B can change positions on each page. Please look at both every time. Take the time you need; comments are optional.</p>
 <p><strong>There are {{ estimated_trials }} comparisons: eight for each of three animal species.</strong> Each comparison has three questions.</p>
 <h2>Taking part is your choice</h2>
-<p>You can stop by closing the page. Answers you have already submitted will remain saved. We record your choices, realism ratings, optional comments, timing, and a random code for your session. We do not ask for your name or email. Please do not put personal information in comments.</p>
+<p>You can stop by closing the page. Your saved draft answers will remain saved, and you can return using the same browser. After selecting Submit study, you can no longer change your answers. We record your saved draft and final choices, realism ratings, optional comments, timing, and a random code for your session. We do not ask for your name or email. Please do not put personal information in comments.</p>
 <p class="quiet">Your browser remembers your session for up to 30 days using a cookie. Use the same browser to return to an unfinished session. Please take part once. The hosting service may separately keep website access logs.</p>
 <form method="post" action="{{ url_for('start') }}"><input type="hidden" name="csrf" value="{{ csrf() }}">
 <label class="agreement"><input type="checkbox" name="agree" value="yes" required> I have read the information above and want to take part.</label>

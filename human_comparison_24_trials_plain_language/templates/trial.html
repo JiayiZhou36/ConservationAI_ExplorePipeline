@@ -9,7 +9,8 @@
 {% block content %}
 
 <div class="trial-heading"><div><p class="eyebrow">Comparison {{ index + 1 }} of {{ total }}</p><h1>Which edited photograph looks more real?</h1></div><p class="quiet">Select an image for a larger view.</p></div>
-<progress value="{{ index }}" max="{{ total }}" aria-label="Completed comparisons"></progress>
+<progress value="{{ answered }}" max="{{ total }}" aria-label="Comparisons with saved answers"></progress>
+<p class="quiet">{{ answered }} of {{ total }} comparisons saved. You can revise your answers until you select Submit study on the review page.</p>
 <div class="trial-purpose"><strong>What was changed?</strong> Both versions below try to remove or hide the same animal or animals shown in the original. Compare how real the edited photographs look, especially the area where the animal was.</div>
 <section class="reference-section" aria-label="Original photograph before editing">
 <figure class="reference-panel"><figcaption>ORIGINAL PHOTOGRAPH · BEFORE EDITING</figcaption>
@@ -44,7 +45,7 @@
 ('rating_5', '5 — Looks completely real', 'I cannot notice any signs of editing.'),
 ('rating_cannot_judge', 'I cannot judge', 'I am unsure how realistic the changed area looks.')
 ] %}
-<label><input type="radio" name="{{ field }}" value="{{ value }}" required><span><strong>{{ label }}</strong><small class="choice-description">{{ description }}</small></span></label>
+<label><input type="radio" name="{{ field }}" value="{{ value }}" {% if answers.get(field) == value %}checked{% endif %} required><span><strong>{{ label }}</strong><small class="choice-description">{{ description }}</small></span></label>
 {% endfor %}</div>
 </div></div>
 </fieldset>
@@ -61,11 +62,16 @@
 <p class="quiet">Now compare Image A and Image B. Consider the edited area and how it fits the surrounding scene. You can give the same rating to both images above and still choose one here if it looks a little more real.</p>
 <div class="choices">
 {% for value, label in [('left','Image A looks more real'),('right','Image B looks more real'),('tie','Both look equally real'),('cannot_judge','I cannot judge')] %}
-<label><input type="radio" name="realism" value="{{ value }}" required><span>{{ label }}</span></label>
+<label><input type="radio" name="realism" value="{{ value }}" {% if answers.get("realism_choice") == value %}checked{% endif %} required><span>{{ label }}</span></label>
 {% endfor %}</div>
 </div></div>
 </fieldset>
 <label for="comment">What made either image look real or unreal to you? <span class="quiet">Optional · no personal information</span></label>
-<textarea id="comment" name="comment" rows="2" maxlength="1000" placeholder="You can describe anything you noticed in Image A or Image B."></textarea>
-<div class="submit-row"><span class="quiet">Your answers are saved when you continue. Submitted answers cannot be changed.</span><button id="answer-submit" disabled>Save answers and continue →</button></div>
+<textarea id="comment" name="comment" rows="2" maxlength="1000" placeholder="You can describe anything you noticed in Image A or Image B.">{{ answers.get("comment", "") }}</textarea>
+<p class="quiet">Next saves all three answers. Previous also saves them when all three questions are answered; incomplete answers on this page are not saved. Nothing is final until you submit the study.</p>
+<div class="submit-row study-navigation">
+{% if index > 0 %}<button type="submit" class="secondary" name="navigate" value="previous" formnovalidate>← Previous</button>{% endif %}
+<button id="answer-submit" type="submit" name="navigate" value="next" disabled>{{ 'Save and review →' if index == total-1 else 'Save and next →' }}</button>
+</div>
+<p><a href="{{ url_for('review') }}">Review saved answers</a> <span class="quiet">(save current changes first)</span></p>
 </form>{% endblock %}
