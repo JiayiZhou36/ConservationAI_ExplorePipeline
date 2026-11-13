@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+images/
+study/*.sqlite3*
+study/session.key
+.vercel/
+.DS_Store

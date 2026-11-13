@@ -1,0 +1,15 @@
+images/**
+.venv/**
+**/__pycache__/**
+**/*.pyc
+study/*.sqlite3*
+study/session.key
+.env
+.env.*
+tests/**
+.git/**
+README.md
+PARTICIPANT_GUIDE.md
+prepare_study.py
+make_demo.py
+check_study.py

@@ -1,0 +1,281 @@
+{
+  "version": "editing-realism-25-v1",
+  "study_id": "8f972e5b60a96df9271d6560b882333d",
+  "trials": [
+    {
+      "id": "368d76fc69491e56ba2d",
+      "task": "replace",
+      "animal": "seal",
+      "source_id": "3bc6dd0e-adb6-4b64-808b-99ab982796ab_jpg.rf.3c581ca554e958b28523c7f86e08c6db",
+      "description": "",
+      "original_asset": "776aeb298dd34a1852b6736aa7129d9314c08681f0766f8ac407133c0fb419c3.png",
+      "original_source": "replace/seal/original/3bc6dd0e-adb6-4b64-808b-99ab982796ab_jpg.rf.3c581ca554e958b28523c7f86e08c6db.jpg",
+      "edited_asset": "abe5510d4bedd7f873ddb43a2db84e889314647f5b2539ab5704ad9cf0ebfbe5.png",
+      "edited_source": "replace/seal/edited/3bc6dd0e-adb6-4b64-808b-99ab982796ab_jpg.rf.3c581ca554e958b28523c7f86e08c6db_replace.png"
+    },
+    {
+      "id": "d67883717b94a2dd6640",
+      "task": "replace",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_Flight_02_00190_640_3200_JPG.rf.7e818ea88cb93a59e9ef0fa9d7c0de65",
+      "description": "",
+      "original_asset": "fcb9b4694732b2c3b4d0580932b5e0980ae78ac6b7effdbab8f7b6dfde4801a1.png",
+      "original_source": "replace/seal/original/JHI_FullSurvey_75m_Flight_02_00190_640_3200_JPG.rf.7e818ea88cb93a59e9ef0fa9d7c0de65.jpg",
+      "edited_asset": "a959a86ed9871d1d6836a8f1a0f7189b625f4f200b34d3d48fe6c1d4d6c5cfd3.png",
+      "edited_source": "replace/seal/edited/JHI_FullSurvey_75m_Flight_02_00190_640_3200_JPG.rf.7e818ea88cb93a59e9ef0fa9d7c0de65_replace.png"
+    },
+    {
+      "id": "42c51c242b6a6f3669f1",
+      "task": "replace",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_survey2_Flight_01_00304_1280_3840_JPG.rf.ce96526a32eb52af1a05a862c8880b8b",
+      "description": "",
+      "original_asset": "eca476491b4f886a1b9de2d6abde7e9c1472a4c26fbd645e7bb8690e0332dac0.png",
+      "original_source": "replace/seal/original/JHI_FullSurvey_75m_survey2_Flight_01_00304_1280_3840_JPG.rf.ce96526a32eb52af1a05a862c8880b8b.jpg",
+      "edited_asset": "cfd3886ee5365b91fb94256de685e5149c739c98e93cc33cb7d6a2c585295fd2.png",
+      "edited_source": "replace/seal/edited/JHI_FullSurvey_75m_survey2_Flight_01_00304_1280_3840_JPG.rf.ce96526a32eb52af1a05a862c8880b8b_replace.png"
+    },
+    {
+      "id": "cdade378a1fefa045a96",
+      "task": "replace",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_survey2_Flight_02_00044_1280_3200_jpg.rf.43f78f058a42e519add0fca2367458cb",
+      "description": "",
+      "original_asset": "3989ec6362db00ac965f90db0db6082ac47dfb6f5faefa9c44153cdf29843da3.png",
+      "original_source": "replace/seal/original/JHI_FullSurvey_75m_survey2_Flight_02_00044_1280_3200_jpg.rf.43f78f058a42e519add0fca2367458cb.jpg",
+      "edited_asset": "5db831f062ecff2b097d4269be97ade9460374ba3ee76c071d724098729efbc4.png",
+      "edited_source": "replace/seal/edited/JHI_FullSurvey_75m_survey2_Flight_02_00044_1280_3200_jpg.rf.43f78f058a42e519add0fca2367458cb_replace.png"
+    },
+    {
+      "id": "5896730dc706f0151c88",
+      "task": "replace",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_survey2_Flight_02_00626_2560_1920_jpg.rf.6805b3d30aef030564ea3006f4b3eccc",
+      "description": "",
+      "original_asset": "74aa85d8eef280ef7f95d897767ee091c516cbc3d0fc8ca2c347423a572c5f42.png",
+      "original_source": "replace/seal/original/JHI_FullSurvey_75m_survey2_Flight_02_00626_2560_1920_jpg.rf.6805b3d30aef030564ea3006f4b3eccc.jpg",
+      "edited_asset": "8f41cc4f1fdec7234282e2012219408e46a704fa848c9c8471b1fff17021c6ca.png",
+      "edited_source": "replace/seal/edited/JHI_FullSurvey_75m_survey2_Flight_02_00626_2560_1920_jpg.rf.6805b3d30aef030564ea3006f4b3eccc_replace.png"
+    },
+    {
+      "id": "250fbfd890d72c463f66",
+      "task": "replace",
+      "animal": "whale",
+      "source_id": "DSC00477",
+      "description": "",
+      "original_asset": "b341d7c46febbeb0c2ada711117bc0902103060809a89798bccf3647bc8ed311.png",
+      "original_source": "replace/whale/original/DSC00477.JPG",
+      "edited_asset": "52623b670d098b38126f006c33389ee52518d8d61f349fb76093b7d2724f966e.png",
+      "edited_source": "replace/whale/edited/DSC00477_replace.png"
+    },
+    {
+      "id": "515d59709ee30f880e9a",
+      "task": "replace",
+      "animal": "whale",
+      "source_id": "DSC00833",
+      "description": "",
+      "original_asset": "ad7b80fb4fb438bed48b5eebefce66c2d8129123f8b34e36e0d42c61d7cba0c4.png",
+      "original_source": "replace/whale/original/DSC00833.JPG",
+      "edited_asset": "e52480b7818501510c18f2d412e3266ef9dea1b093e3dbb354e87d891f853548.png",
+      "edited_source": "replace/whale/edited/DSC00833_replace.png"
+    },
+    {
+      "id": "fd78035f72e69b5f9461",
+      "task": "replace",
+      "animal": "whale",
+      "source_id": "DSC00948",
+      "description": "",
+      "original_asset": "14145424cbbc001890e33233377a58819884f19c7948cf9344384d358af0c985.png",
+      "original_source": "replace/whale/original/DSC00948.JPG",
+      "edited_asset": "7e6f27dc0e6578b350ada35c5c706fe38d16144989b903cf62a71ebccff4ba91.png",
+      "edited_source": "replace/whale/edited/DSC00948_replace.png"
+    },
+    {
+      "id": "ed390e81fb5b473895bd",
+      "task": "replace",
+      "animal": "whale",
+      "source_id": "DSC01082",
+      "description": "",
+      "original_asset": "2b30a078ba53da74ee5eb9044b51af4b2fff443a1deda357c2722a910e73c92e.png",
+      "original_source": "replace/whale/original/DSC01082.JPG",
+      "edited_asset": "664bad5faf8154ebb7b913a3fb8c695749f4a4797986f324fbfd25a87567cc41.png",
+      "edited_source": "replace/whale/edited/DSC01082_replace.png"
+    },
+    {
+      "id": "bcf0bb9b6aec54758e8c",
+      "task": "replace",
+      "animal": "whale",
+      "source_id": "DSC01123",
+      "description": "",
+      "original_asset": "2112cfc9345a08bb608bee57c3b2f3300a67751f4f3d7aac5f83a084070cf7f9.png",
+      "original_source": "replace/whale/original/DSC01123.JPG",
+      "edited_asset": "14e1b933d0a7e29d5d682b4daeb850d988f2fcda6f251ed795cb38f8afb944c2.png",
+      "edited_source": "replace/whale/edited/DSC01123_replace.png"
+    },
+    {
+      "id": "84d1dd7e4228057d8a53",
+      "task": "background",
+      "animal": "penguin",
+      "source_id": "GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---1256",
+      "description": "",
+      "original_asset": "8f3d0224f94dfb44a024b87f5df7c4aabc5488fbacc4fff7e1b082d764260a98.png",
+      "original_source": "background/penguin/original/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---1256.png",
+      "edited_asset": "4ee1e17b4d61b07b2349a42cbb79f2528bd17c571f4699f690a24a3615d09c65.png",
+      "edited_source": "background/penguin/edited/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---1256_background.png"
+    },
+    {
+      "id": "e6510d32bc259dbe6bf8",
+      "task": "background",
+      "animal": "penguin",
+      "source_id": "GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---496",
+      "description": "",
+      "original_asset": "521cd8ed33078960ecae236453644a269cb7ca7a599acc4cde1702f5cd00ae39.png",
+      "original_source": "background/penguin/original/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---496.png",
+      "edited_asset": "ca585d522e5f1996f89d178bf6e2b504f6b32103deff45aa3356d0aeb3c21e9e.png",
+      "edited_source": "background/penguin/edited/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---496_background.png"
+    },
+    {
+      "id": "59f2c63ef89fc576878f",
+      "task": "background",
+      "animal": "penguin",
+      "source_id": "GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---720",
+      "description": "",
+      "original_asset": "fc8c74f7914090e531d1226deb98d6ddbeba6e13e7554aac8519a30458aab7f4.png",
+      "original_source": "background/penguin/original/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---720.png",
+      "edited_asset": "3636aa91f2fe6c24f57d6dfd02ec3709933dd185e76568a06aa3cedf7530f94b.png",
+      "edited_source": "background/penguin/edited/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---720_background.png"
+    },
+    {
+      "id": "a0a7e56f16a56dcfef12",
+      "task": "background",
+      "animal": "penguin",
+      "source_id": "GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---801",
+      "description": "",
+      "original_asset": "734a0a865bc8a2b9efa969c11b354d3a22ac59e0c6681e20e90df75df421a078.png",
+      "original_source": "background/penguin/original/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---801.png",
+      "edited_asset": "fdcacd5b51547a10e3f41b2e5325fb89423c2ec2b9afee1a39d848e85ee1bb90.png",
+      "edited_source": "background/penguin/edited/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---801_background.png"
+    },
+    {
+      "id": "55e36b59432700ec18b9",
+      "task": "background",
+      "animal": "penguin",
+      "source_id": "GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---873",
+      "description": "",
+      "original_asset": "4f5daaa95e405ea9d2ce9f5d3a4a23511f3911bafa45a5eca7bbbe13f2fcee5f.png",
+      "original_source": "background/penguin/original/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---873.png",
+      "edited_asset": "63a9fa5c51e78f10dbbad0b5b07fe42e45034b6c49b3c9cb36fc51e53e0a2b20.png",
+      "edited_source": "background/penguin/edited/GrandJason_SEBlob_Nov2019_New_transparent_mosaic_group1_500x500_overlap40---873_background.png"
+    },
+    {
+      "id": "33a3eeedab7a63366899",
+      "task": "background",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_Flight_01_00313_1280_3840_JPG.rf.2299c5bfdc33fa9eb5469c72881a7ec5",
+      "description": "",
+      "original_asset": "f62c18287e319c445ff4880d213b59c8f0b0523aeba27e6c7ce206c01ebdd271.png",
+      "original_source": "background/seal/original/JHI_FullSurvey_75m_Flight_01_00313_1280_3840_JPG.rf.2299c5bfdc33fa9eb5469c72881a7ec5.jpg",
+      "edited_asset": "d8f30e34913cb03edc0a7b9c7e9002a13fa0834711f568c65e7d380637c3c2df.png",
+      "edited_source": "background/seal/edited/JHI_FullSurvey_75m_Flight_01_00313_1280_3840_JPG.rf.2299c5bfdc33fa9eb5469c72881a7ec5_background.png"
+    },
+    {
+      "id": "7ea97b690da0b0cba5f6",
+      "task": "background",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_Flight_01_00314_3200_3840_JPG.rf.4b9a2fd9faa587d8efc13a1e8300c191",
+      "description": "",
+      "original_asset": "1a16f9513402f82adc3a91da2448c1d56dc89827c9e7d1e9f89ac480a4b60187.png",
+      "original_source": "background/seal/original/JHI_FullSurvey_75m_Flight_01_00314_3200_3840_JPG.rf.4b9a2fd9faa587d8efc13a1e8300c191.jpg",
+      "edited_asset": "2793fd461c692b11547602ca24403ddbb05464dfac7cab7bbddccbb9208d5470.png",
+      "edited_source": "background/seal/edited/JHI_FullSurvey_75m_Flight_01_00314_3200_3840_JPG.rf.4b9a2fd9faa587d8efc13a1e8300c191_background.png"
+    },
+    {
+      "id": "bc672b03165edf234eab",
+      "task": "background",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_Flight_01_00351_1920_4480_JPG.rf.da9f56a7adefbcd16ca654030aa3c015",
+      "description": "",
+      "original_asset": "af3e39b2733f965aee68ba6be427632498f88a498bece0a7eb73257a9d6fd7fb.png",
+      "original_source": "background/seal/original/JHI_FullSurvey_75m_Flight_01_00351_1920_4480_JPG.rf.da9f56a7adefbcd16ca654030aa3c015.jpg",
+      "edited_asset": "282bb99e07a2dbe4973815b1bb9d49b08810ac97f6c75818d3b3adc6d885f716.png",
+      "edited_source": "background/seal/edited/JHI_FullSurvey_75m_Flight_01_00351_1920_4480_JPG.rf.da9f56a7adefbcd16ca654030aa3c015_background.png"
+    },
+    {
+      "id": "6e92cd297904082e9334",
+      "task": "background",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_Flight_02_00185_640_1280_JPG.rf.e74814ddb4ef4f4278e98f2eb15df064",
+      "description": "",
+      "original_asset": "4ea4047f782a1a73fac4f98b01ee17aad8b89ec3dad94b81bf07496a5e9a02b3.png",
+      "original_source": "background/seal/original/JHI_FullSurvey_75m_Flight_02_00185_640_1280_JPG.rf.e74814ddb4ef4f4278e98f2eb15df064.jpg",
+      "edited_asset": "133c7b218b152b9d2485ad7415ad0039d49e0f24dcfdc20fc56fddfd1f4cbc2a.png",
+      "edited_source": "background/seal/edited/JHI_FullSurvey_75m_Flight_02_00185_640_1280_JPG.rf.e74814ddb4ef4f4278e98f2eb15df064_background.png"
+    },
+    {
+      "id": "2e364b4bed61e065d3e6",
+      "task": "background",
+      "animal": "seal",
+      "source_id": "JHI_FullSurvey_75m_survey2_Flight_02_00084_640_1920_jpg.rf.947c501c595462f7c0f1f0ea79d243d6",
+      "description": "",
+      "original_asset": "1a4e1f3f70ac84868069aa6a71347040d52ee34d170d2f0b46156a143f73b9df.png",
+      "original_source": "background/seal/original/JHI_FullSurvey_75m_survey2_Flight_02_00084_640_1920_jpg.rf.947c501c595462f7c0f1f0ea79d243d6.jpg",
+      "edited_asset": "f676299ea2347f0c684e28728e035deeb0bc23e60cac6fecd688e9df19f6a624.png",
+      "edited_source": "background/seal/edited/JHI_FullSurvey_75m_survey2_Flight_02_00084_640_1920_jpg.rf.947c501c595462f7c0f1f0ea79d243d6_background.png"
+    },
+    {
+      "id": "ab1ed82b3115c6b75a0f",
+      "task": "background",
+      "animal": "whale",
+      "source_id": "DSC00429",
+      "description": "",
+      "original_asset": "99f7a84a5eba3a99e644757b8129ef15f04262588f2dc947fad586f3b62968ec.png",
+      "original_source": "background/whale/original/DSC00429.JPG",
+      "edited_asset": "b2e96d0f24e3e7d5fc5a810bcf082ab474ffcc7b6f79150d55547573c3ad29ba.png",
+      "edited_source": "background/whale/edited/DSC00429_background.png"
+    },
+    {
+      "id": "d726783ad15973fa036b",
+      "task": "background",
+      "animal": "whale",
+      "source_id": "DSC00566",
+      "description": "",
+      "original_asset": "d9dca68f4a4cc03cb16f84994e20c46d0a0bc229be51b705fd835bd1079643ad.png",
+      "original_source": "background/whale/original/DSC00566.JPG",
+      "edited_asset": "4721777534d486182d8f926f06861d103322d132fcfb6a20f14b53447d3be32f.png",
+      "edited_source": "background/whale/edited/DSC00566_background.png"
+    },
+    {
+      "id": "676b9d1042fd5fe014b9",
+      "task": "background",
+      "animal": "whale",
+      "source_id": "DSC00605",
+      "description": "",
+      "original_asset": "6a1f3bb4919420d434480af2388c6d3aa3a8d6ec295536d2b247c4896406f894.png",
+      "original_source": "background/whale/original/DSC00605.JPG",
+      "edited_asset": "9e6444f4853922dbe32e68ab7ee1949d0e718f3a38e29720c72cb9f2a980aa53.png",
+      "edited_source": "background/whale/edited/DSC00605_background.png"
+    },
+    {
+      "id": "1a584932b22f97441fde",
+      "task": "background",
+      "animal": "whale",
+      "source_id": "DSC00724",
+      "description": "",
+      "original_asset": "e64714d69bfe9d1986c04ea0757b9a3b507096f6b8dbb807a78229c8156d112d.png",
+      "original_source": "background/whale/original/DSC00724.JPG",
+      "edited_asset": "d0b23eddf0be00aa17757b988414971d268add1abf4827cf805d04b4bcf79ab9.png",
+      "edited_source": "background/whale/edited/DSC00724_background.png"
+    },
+    {
+      "id": "cbcc9e3bf5218bee2ea4",
+      "task": "background",
+      "animal": "whale",
+      "source_id": "DSC01123",
+      "description": "",
+      "original_asset": "2112cfc9345a08bb608bee57c3b2f3300a67751f4f3d7aac5f83a084070cf7f9.png",
+      "original_source": "background/whale/original/DSC01123.JPG",
+      "edited_asset": "a7de12ffdf0d3c59cff9826087d3761caaf95339bea6a6e84e22f7b986593ba0.png",
+      "edited_source": "background/whale/edited/DSC01123_background.png"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+task,animal,source_id,original,edited,description
+replace,seal,seal_01,replace/seal/original/seal_01.jpg,replace/seal/edited/seal_01_replace.png,An animal region was edited to replace the seal with a buoy.
